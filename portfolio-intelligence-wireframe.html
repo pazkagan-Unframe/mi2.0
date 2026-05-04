@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Portfolio Intelligence — Wireframe v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAF7;
+    --surface: #FFFFFF;
+    --surface-2: #F4F3EE;
+    --border: #E5E3DB;
+    --border-strong: #D3D1C7;
+    --text: #1F1E1A;
+    --text-2: #5F5E5A;
+    --text-3: #888780;
+    --accent: #534AB7;
+    --accent-bg: #EEEDFE;
+    --success: #0F6E56;
+    --success-bg: #E1F5EE;
+    --danger: #A32D2D;
+    --danger-bg: #FCEBEB;
+    --warning: #854F0B;
+    --warning-bg: #FAEEDA;
+    --info: #185FA5;
+    --info-bg: #E6F1FB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  .mono { font-family: 'Geist Mono', monospace; font-feature-settings: 'tnum'; }
+  .container { max-width: 1320px; margin: 0 auto; padding: 0 32px; }
+
+  /* TOP BAR */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+  .logo { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+  .logo span { color: var(--accent); }
+  .top-nav { display: flex; gap: 4px; }
+  .top-nav a {
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-2);
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .top-nav a.active { background: var(--surface-2); color: var(--text); font-weight: 500; }
+  .top-utils { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: white; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; }
+
+  /* PAGE HEADER */
+  .page-header {
+    padding: 28px 0 16px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+  .page-subtitle { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+  .badge-new {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* SECTION TABS */
+  .section-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .section-tab {
+    padding: 12px 0;
+    margin-right: 28px;
+    font-size: 14px;
+    color: var(--text-2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .section-tab.active {
+    color: var(--text);
+    font-weight: 500;
+    border-bottom-color: var(--accent);
+  }
+  .section-tab .count {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--text-3);
+    background: var(--surface-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0 20px;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .filter-chip.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .filter-chip .label { color: var(--text-3); }
+  .filter-chip .value { font-weight: 500; }
+  .filter-chip .caret { color: var(--text-3); font-size: 9px; }
+  .filter-bar .spacer { flex: 1; }
+  .save-view {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 6px 10px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+  }
+
+  /* KPI STRIP */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .kpi-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .kpi-value.danger { color: var(--danger); }
+  .kpi-value.success { color: var(--success); }
+  .kpi-meta { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+  .kpi-meta .accent { color: var(--accent); cursor: pointer; }
+
+  /* GRID ROW */
+  .row { display: grid; gap: 16px; margin-bottom: 16px; }
+  .row.split-60-40 { grid-template-columns: 3fr 2fr; }
+  .row.split-50-50 { grid-template-columns: 1fr 1fr; }
+  .row.full { grid-template-columns: 1fr; }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-actions { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-2); }
+  .card-actions .ai-insight {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .card-actions .ai-insight::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+  .card-body { padding: 18px; }
+
+  /* PROPERTY TYPE BREAKDOWN */
+  .ptype-row {
+    display: grid;
+    grid-template-columns: 140px 50px 1fr 100px 80px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    margin: 0 -8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 6px;
+  }
+  .ptype-row:last-child { border-bottom: none; }
+  .ptype-row:hover { background: var(--surface-2); }
+  .ptype-row.header {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    cursor: default;
+    padding: 6px 8px;
+  }
+  .ptype-row.header:hover { background: transparent; }
+  .ptype-name { font-size: 13px; font-weight: 500; }
+  .ptype-count { font-size: 12px; color: var(--text-2); text-align: right; }
+  .ptype-bar {
+    height: 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+  }
+  .ptype-bar .below { background: var(--success); height: 100%; }
+  .ptype-bar .above { background: var(--danger); height: 100%; }
+  .ptype-bar .marker {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 1px;
+    background: var(--text-3);
+  }
+  .ptype-gap { font-size: 13px; font-weight: 500; text-align: right; }
+  .ptype-gap.danger { color: var(--danger); }
+  .ptype-gap.success { color: var(--success); }
+  .ptype-action { font-size: 11px; color: var(--accent); text-align: right; }
+
+  /* DONUT */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+  }
+  .donut {
+    position: relative;
+    width: 180px;
+    height: 180px;
+  }
+  .donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .donut-center .num { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .donut-center .lbl { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 0 16px;
+  }
+  .donut-legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .donut-legend-item .swatch { width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; }
+  .donut-legend-item .left { display: flex; align-items: center; color: var(--text-2); }
+  .donut-legend-item .right { font-weight: 500; }
+
+  /* LEASE TABLE */
+  .table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .ptype-filter-chip {
+    padding: 5px 10px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    cursor: pointer;
+    color: var(--text-2);
+    background: var(--surface);
+  }
+  .ptype-filter-chip.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .ptype-filter-chip .ct { color: var(--text-3); margin-left: 4px; font-size: 11px; }
+  .ptype-filter-chip.active .ct { color: rgba(255,255,255,0.7); }
+  .table-toolbar .spacer { flex: 1; }
+  .sort-select {
+    font-size: 12px;
+    color: var(--text-2);
+    padding: 5px 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+  }
+
+  table.lease-table { width: 100%; border-collapse: collapse; }
+  .lease-table th {
+    text-align: left;
+    padding: 10px 18px;
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .lease-table th.right { text-align: right; }
+  .lease-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .lease-table td.right { text-align: right; }
+  .lease-table tr:hover td { background: var(--surface-2); }
+  .lease-table tr:last-child td { border-bottom: none; }
+  .lease-name { font-weight: 500; margin-bottom: 2px; }
+  .lease-meta { font-size: 11px; color: var(--text-3); }
+
+  .scope-chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .scope-chip .scope-text { font-size: 12px; color: var(--text); }
+  .scope-chip .scope-conf {
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .scope-chip .scope-conf::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .scope-conf.high { color: var(--success); }
+  .scope-conf.high::before { background: var(--success); }
+  .scope-conf.med { color: var(--warning); }
+  .scope-conf.med::before { background: var(--warning); }
+  .scope-conf.low { color: var(--danger); }
+  .scope-conf.low::before { background: var(--danger); }
+  .widen-link {
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    margin-top: 2px;
+    display: inline-block;
+    cursor: pointer;
+  }
+
+  .gap-cell { display: flex; flex-direction: column; align-items: flex-end; }
+  .gap-value { font-weight: 600; font-size: 14px; }
+  .gap-value.danger { color: var(--danger); }
+  .gap-value.success { color: var(--success); }
+  .gap-pct { font-size: 11px; color: var(--text-3); }
+
+  .expiry-cell { font-size: 12px; color: var(--text-2); }
+  .expiry-cell.urgent { color: var(--danger); font-weight: 500; }
+
+  .table-footer {
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--text-2);
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  /* MAP */
+  .map-stub {
+    height: 380px;
+    background: linear-gradient(135deg, #E8EDE3 0%, #DDE4D5 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .map-stub::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 30%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.3) 0%, transparent 25%);
+  }
+  .map-pin {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border: 2px solid white;
+    cursor: pointer;
+  }
+  .map-pin.danger { background: var(--danger); }
+  .map-pin.success { background: var(--success); }
+  .map-pin.warning { background: var(--warning); }
+  .map-legend {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .map-legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
+  .map-legend-item .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .map-note {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: var(--accent);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    max-width: 280px;
+    line-height: 1.4;
+  }
+  .map-note::before {
+    content: "FIX";
+    background: white;
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 6px;
+    font-size: 9px;
+    font-weight: 600;
+  }
+
+  /* OPPORTUNITY LISTS */
+  .list-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item-name { font-size: 13px; font-weight: 500; }
+  .list-item-meta { font-size: 11px; color: var(--text-3); }
+  .list-item-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .list-item-bar {
+    width: 100px;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .list-item-bar .fill { height: 100%; }
+  .list-item-bar .fill.danger { background: var(--danger); }
+  .list-item-bar .fill.success { background: var(--success); }
+  .list-item-val { font-size: 12px; font-weight: 500; min-width: 60px; text-align: right; }
+  .list-item-val.danger { color: var(--danger); }
+  .list-item-val.success { color: var(--success); }
+
+  /* ANNOTATIONS */
+  .annotation {
+    padding: 14px 18px;
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 13px;
+    color: var(--accent);
+    line-height: 1.5;
+  }
+  .annotation strong { font-weight: 600; }
+  .annotation-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 24px 0 32px;
+  }
+  .annotation-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+  }
+  .annotation-card .num {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .annotation-card .title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .annotation-card .desc { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    margin: 48px 0 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .section-divider-title { font-size: 13px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+
+  /* MARKET BROWSER PREVIEW */
+  .market-preview {
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--text-2);
+  }
+  .market-preview h3 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .market-preview p { font-size: 12px; margin-bottom: 14px; }
+  .market-preview .widget-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .market-preview .widget-stub {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 11px;
+    text-align: left;
+    color: var(--text-2);
+  }
+
+  /* DRAWER */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 30, 26, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 100;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 560px;
+    max-width: 92vw;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 101;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 32px rgba(0,0,0,0.06);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .drawer-eyebrow {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .drawer-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .drawer-subtitle { font-size: 13px; color: var(--text-2); }
+  .drawer-close {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    background: transparent;
+    border: none;
+    color: var(--text-2);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    line-height: 1;
+    font-family: inherit;
+  }
+  .drawer-close:hover { background: var(--surface-2); color: var(--text); }
+  .drawer-mini-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer-mini-kpi {
+    background: var(--surface);
+    padding: 14px 18px;
+    text-align: left;
+  }
+  .drawer-mini-kpi .lbl {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .drawer-mini-kpi .val { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  .drawer-mini-kpi .val.danger { color: var(--danger); }
+  .drawer-mini-kpi .val.success { color: var(--success); }
+  .drawer-mini-kpi .val.muted { color: var(--text-3); }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px 28px 20px; }
+  .drawer-section-title {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin: 4px 0 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .drawer-section-title .sort {
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .submarket-row {
+    display: grid;
+    grid-template-columns: 1fr 56px 92px 92px;
+    align-items: center;
+    padding: 12px 8px;
+    margin: 0 -8px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.1s;
+  }
+  .submarket-row:last-child { border-bottom: none; }
+  .submarket-row:hover { background: var(--surface-2); }
+  .submarket-row.header {
+    cursor: default;
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    padding: 8px;
+  }
+  .submarket-row.header:hover { background: transparent; }
+  .submarket-name { font-size: 13px; font-weight: 500; }
+  .submarket-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .submarket-count { font-size: 12px; color: var(--text-2); text-align: right; }
+  .submarket-rents { text-align: right; font-size: 11px; line-height: 1.4; }
+  .submarket-rents .yours { font-size: 13px; font-weight: 500; color: var(--text); display: block; }
+  .submarket-rents .market { color: var(--text-3); }
+  .submarket-gap { text-align: right; }
+  .submarket-gap .val { font-size: 13px; font-weight: 600; }
+  .submarket-gap .val.danger { color: var(--danger); }
+  .submarket-gap .val.success { color: var(--success); }
+  .submarket-gap .val.muted { color: var(--text-3); font-weight: 400; font-size: 11px; }
+  .submarket-gap .conf {
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .submarket-gap .conf::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .submarket-gap .conf.high { color: var(--success); }
+  .submarket-gap .conf.high::before { background: var(--success); }
+  .submarket-gap .conf.med { color: var(--warning); }
+  .submarket-gap .conf.med::before { background: var(--warning); }
+  .submarket-gap .conf.low { color: var(--danger); }
+  .submarket-gap .conf.low::before { background: var(--danger); }
+  .drawer-footer {
+    padding: 14px 28px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+  }
+  .drawer-footer-meta { font-size: 12px; color: var(--text-3); }
+  .drawer-footer-action {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--accent-bg);
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    font-family: inherit;
+  }
+  .drawer-footer-action:hover { background: #DCD9FA; }
+  .ptype-row[data-ptype] { cursor: pointer; }
+  .ptype-action { transition: color 0.15s; }
+  .ptype-row[data-ptype]:hover .ptype-action { color: var(--accent); }
+
+  /* WIREFRAME META */
+  .wireframe-meta {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 32px 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .wireframe-meta .left h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .wireframe-meta .left p { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+  .wireframe-meta .right { display: flex; gap: 16px; font-size: 12px; }
+  .wireframe-meta .right div { color: var(--text-2); }
+  .wireframe-meta .right strong { color: var(--text); display: block; font-weight: 500; }
+
+  footer {
+    padding: 32px 0 48px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* DRAWER */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 30, 26, 0.3);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-out;
+  }
+  .drawer-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 720px;
+    max-width: 92vw;
+    background: var(--bg);
+    z-index: 101;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow-y: auto;
+    box-shadow: -12px 0 32px rgba(31, 30, 26, 0.08);
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 28px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    gap: 16px;
+  }
+  .drawer-title-block { flex: 1; }
+  .drawer-eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .drawer-title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .drawer-subtitle {
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .drawer-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: var(--text-2);
+    flex-shrink: 0;
+    font-family: inherit;
+  }
+  .drawer-close:hover { background: var(--surface-2); color: var(--text); }
+  .drawer-body { padding: 24px 28px 32px; flex: 1; }
+  .drawer-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .drawer-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .drawer-stat .lbl {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .drawer-stat .val {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .drawer-stat .val.danger { color: var(--danger); }
+  .drawer-stat .val.success { color: var(--success); }
+  .drawer-section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .drawer-section-title { font-size: 14px; font-weight: 500; }
+  .drawer-section-hint { font-size: 11px; color: var(--text-3); }
+  .submarket-row {
+    display: grid;
+    grid-template-columns: 1.7fr 50px 1.3fr 110px 70px;
+    align-items: center;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+    gap: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 0 -8px;
+    transition: background 0.1s;
+  }
+  .submarket-row:hover { background: var(--surface-2); }
+  .submarket-row:last-child { border-bottom: none; }
+  .submarket-row.header {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    cursor: default;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .submarket-row.header:hover { background: transparent; }
+  .submarket-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .submarket-conf {
+    font-size: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .submarket-conf::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+  .submarket-conf.high { color: var(--success); }
+  .submarket-conf.high::before { background: var(--success); }
+  .submarket-conf.med { color: var(--warning); }
+  .submarket-conf.med::before { background: var(--warning); }
+  .submarket-conf.low { color: var(--danger); }
+  .submarket-conf.low::before { background: var(--danger); }
+  .drawer-footer {
+    margin-top: 24px;
+    padding: 16px;
+    background: var(--accent-bg);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .drawer-footer-text {
+    font-size: 12px;
+    color: var(--accent);
+    line-height: 1.5;
+  }
+  .drawer-footer-cta {
+    padding: 8px 14px;
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    flex-shrink: 0;
+    font-family: inherit;
+  }
+
+  .ptype-row { position: relative; }
+  .ptype-row:not(.header)::after {
+    content: "→";
+    position: absolute;
+    right: 14px;
+    color: var(--text-3);
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .ptype-row:not(.header):hover::after { opacity: 1; }
+
+  /* TOOLTIP */
+  .tooltip {
+    position: fixed;
+    background: #1F1E1A;
+    color: #FFFFFF;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 200;
+    width: 280px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .tooltip-meta {
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    margin-top: 1px;
+    margin-bottom: 10px;
+  }
+  .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 0;
+    font-size: 12px;
+  }
+  .tooltip-row .label { color: rgba(255,255,255,0.55); }
+  .tooltip-row .value {
+    font-family: 'Geist Mono', monospace;
+    font-feature-settings: 'tnum';
+    font-weight: 500;
+    text-align: right;
+  }
+  .tooltip-row .value.danger { color: #F09595; }
+  .tooltip-row .value.success { color: #5DCAA5; }
+  .tooltip-row .value.warning { color: #FAC775; }
+  .tooltip-divider {
+    border-top: 1px solid rgba(255,255,255,0.12);
+    margin: 8px 0 6px;
+  }
+  .tooltip-formula {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    line-height: 1.5;
+  }
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 9px;
+    font-weight: 600;
+    margin-left: 6px;
+    cursor: help;
+    vertical-align: middle;
+    font-family: serif;
+  }
+  .info-icon:hover { background: var(--accent-bg); color: var(--accent); }
+  .map-pin { cursor: pointer; transition: transform 0.1s; }
+  .map-pin:hover { transform: scale(1.15); z-index: 5; }
+  .list-item { cursor: pointer; }
+  .list-item:hover { background: var(--surface-2); margin: 0 -8px; padding: 10px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">One<span>Advise</span></div>
+  <nav class="top-nav">
+    <a href="#">Portfolio</a>
+    <a href="#">Documents</a>
+    <a href="#">Map</a>
+    <a href="#">Dashboards</a>
+    <a href="#" class="active">Intelligence</a>
+    <a href="#">Manage</a>
+  </nav>
+  <div class="top-utils">
+    <span>Bosch</span>
+    <div class="avatar">PK</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="wireframe-meta">
+    <div class="left">
+      <h1>Portfolio Intelligence — Redesign Wireframe v1</h1>
+      <p>Working draft for Thursday review with Nir, Joel, design team</p>
+    </div>
+    <div class="right">
+      <div><strong>Author</strong>Paz Kagan</div>
+      <div><strong>Status</strong>Draft</div>
+      <div><strong>Date</strong>May 2026</div>
+    </div>
+  </div>
+
+  <div class="annotation-grid">
+    <div class="annotation-card">
+      <div class="num">Principle 01</div>
+      <div class="title">Per-lease per-its-area comparison</div>
+      <div class="desc">Each lease compares against the average of the specific sub-market it sits in — never against a blended portfolio average.</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Principle 02</div>
+      <div class="title">Sub-market default, user widens</div>
+      <div class="desc">Default is the lowest granularity available. Below 10 comps, surface widen-to-market option but never auto-apply.</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Principle 03</div>
+      <div class="title">Two-section dashboard</div>
+      <div class="desc">Portfolio-vs-market analytics and pure-market data are different use cases that should not share the same scroll.</div>
+    </div>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">Intelligence<span class="badge-new">Redesign</span></div>
+      <div class="page-subtitle">Benchmark your portfolio. Browse the market.</div>
+    </div>
+  </div>
+
+  <div class="section-tabs">
+    <div class="section-tab active">
+      Portfolio Intelligence
+      <span class="count">971 leases</span>
+    </div>
+    <div class="section-tab">
+      Market Browser
+      <span class="count">505 markets</span>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <div class="filter-chip primary">
+      <span class="label">Client</span>
+      <span class="value">Bosch</span>
+      <span class="caret">▼</span>
+    </div>
+    <div class="filter-chip">
+      <span class="label">Sub-markets</span>
+      <span class="value">All (42)</span>
+      <span class="caret">▼</span>
+    </div>
+    <div class="filter-chip">
+      <span class="label">Property type</span>
+      <span class="value">All</span>
+      <span class="caret">▼</span>
+    </div>
+    <div class="filter-chip">
+      <span class="label">Period</span>
+      <span class="value">Last 24 mo</span>
+      <span class="caret">▼</span>
+    </div>
+    <div class="filter-chip">
+      <span class="label">Comp window</span>
+      <span class="value">12 mo</span>
+      <span class="caret">▼</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="save-view">+ Save view</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi" data-tt-title="Total gap exposure" data-tt-meta="Aggregate of leases above their own market" data-tt-rent="$5,140K above" data-tt-market="$17,360K above (raw)" data-tt-scope="Per-lease vs sub-market avg" data-tt-gap="−$12.2M net exposure" data-tt-conf="high" data-tt-formula="Sum of (lease rent − sub-market avg) × leased SF for above-market leases">
+      <div class="kpi-label">Total gap exposure<span class="info-icon">i</span></div>
+      <div class="kpi-value danger">−$12.2M</div>
+      <div class="kpi-meta">216 leases above market · <span class="accent">view all →</span></div>
+    </div>
+    <div class="kpi" data-tt-title="Renegotiation pool" data-tt-meta="High-priority action candidates" data-tt-rent="47 leases qualify" data-tt-market="−$4.8M total above-market" data-tt-scope="Above market AND <18mo to expiry" data-tt-gap="$2.1M annual savings opportunity" data-tt-conf="high" data-tt-formula="Filtered: above-market + expires within 18 months">
+      <div class="kpi-label">Renegotiation pool<span class="info-icon">i</span></div>
+      <div class="kpi-value">47</div>
+      <div class="kpi-meta">expiring &lt;18 mo · above market · <span class="accent">act on these →</span></div>
+    </div>
+    <div class="kpi" data-tt-title="Below-market savings" data-tt-meta="Aggregate of leases below their own market" data-tt-rent="$27.9M below market" data-tt-market="vs sub-market avgs" data-tt-scope="Per-lease vs sub-market avg" data-tt-gap="+$27.9M positive position" data-tt-conf="high" data-tt-formula="Sum of (sub-market avg − lease rent) × leased SF for below-market leases">
+      <div class="kpi-label">Below-market savings<span class="info-icon">i</span></div>
+      <div class="kpi-value success">+$27.9M</div>
+      <div class="kpi-meta">163 leases below market · <span class="accent">view all →</span></div>
+    </div>
+    <div class="kpi" data-tt-title="Benchmark coverage" data-tt-meta="Leases with sufficient comparable data" data-tt-rent="379 of 971 leases" data-tt-market="≥5 comps in sub-market" data-tt-scope="Sub-market default · 24mo window" data-tt-gap="592 require widening or have no comps" data-tt-conf="high" data-tt-formula="Coverage = leases with ≥5 comps in their sub-market within 24mo">
+      <div class="kpi-label">Benchmark coverage<span class="info-icon">i</span></div>
+      <div class="kpi-value">379<span style="font-size: 16px; color: var(--text-3); font-weight: 400;"> / 971</span></div>
+      <div class="kpi-meta">39% have comparable sub-market data</div>
+    </div>
+  </div>
+
+  <div class="row split-60-40">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Portfolio gap by property type<span class="badge-new">Updated</span></div>
+        <div class="card-actions">
+          <span style="font-size: 11px; color: var(--text-3);">click any type to drill into sub-markets</span>
+          <span class="ai-insight">AI Insight</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="ptype-row header">
+          <div>Property type</div>
+          <div style="text-align: right;">Leases</div>
+          <div>Distribution (above ↔ below market)</div>
+          <div style="text-align: right;">Net gap</div>
+          <div></div>
+        </div>
+        <div class="ptype-row" data-ptype="office">
+          <div class="ptype-name">Office</div>
+          <div class="ptype-count mono">130</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 32%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 64%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$4.42/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="other">
+          <div class="ptype-name">Other</div>
+          <div class="ptype-count mono">113</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 59%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 37%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap success mono">+$23.24/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="warehouse">
+          <div class="ptype-name">Warehouse</div>
+          <div class="ptype-count mono">34</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 18%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 78%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$7.53/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="restaurant">
+          <div class="ptype-name">Restaurant</div>
+          <div class="ptype-count mono">18</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 89%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 7%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap success mono">+$20.37/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="office_warehouse">
+          <div class="ptype-name">Office/Warehouse</div>
+          <div class="ptype-count mono">15</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 6%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 90%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$5.90/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="general_office">
+          <div class="ptype-name">General Office</div>
+          <div class="ptype-count mono">14</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 22%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 74%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$13.52/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="industrial">
+          <div class="ptype-name">Industrial</div>
+          <div class="ptype-count mono">10</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 20%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 76%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$7.66/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+        <div class="ptype-row" data-ptype="manufacturing">
+          <div class="ptype-name">Manufacturing</div>
+          <div class="ptype-count mono">9</div>
+          <div class="ptype-bar">
+            <div class="below" style="width: 0%;"></div>
+            <div style="width: 4%;"></div>
+            <div class="above" style="width: 96%;"></div>
+            <div class="marker" style="left: 50%;"></div>
+          </div>
+          <div class="ptype-gap danger mono">−$10.34/SF</div>
+          <div class="ptype-action">filter →</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Portfolio vs market</div>
+        <div class="card-actions">
+          <span class="ai-insight">AI Insight</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="donut-wrap">
+          <div class="donut">
+            <svg viewBox="0 0 36 36" width="180" height="180" style="transform: rotate(-90deg);">
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E5E3DB" stroke-width="3.5"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#0F6E56" stroke-width="3.5" stroke-dasharray="16.8 100" stroke-dashoffset="0"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#A32D2D" stroke-width="3.5" stroke-dasharray="22.2 100" stroke-dashoffset="-16.8"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#D3D1C7" stroke-width="3.5" stroke-dasharray="61 100" stroke-dashoffset="-39"/>
+            </svg>
+            <div class="donut-center">
+              <div class="num">971</div>
+              <div class="lbl">Total leases</div>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <div class="donut-legend-item">
+              <div class="left"><span class="swatch" style="background: var(--success);"></span>Below market</div>
+              <div class="right">163</div>
+            </div>
+            <div class="donut-legend-item">
+              <div class="left"><span class="swatch" style="background: var(--danger);"></span>Above market</div>
+              <div class="right">216</div>
+            </div>
+            <div class="donut-legend-item">
+              <div class="left"><span class="swatch" style="background: var(--border-strong);"></span>No comparable data</div>
+              <div class="right">592</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row full">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Lease-by-lease benchmark<span class="badge-new">New</span></div>
+        <div class="card-actions">
+          <span>Showing 6 of 379 benchmarked leases</span>
+          <span class="ai-insight">AI Insight</span>
+        </div>
+      </div>
+      <div class="table-toolbar">
+        <span class="ptype-filter-chip active">All<span class="ct">971</span></span>
+        <span class="ptype-filter-chip">Office<span class="ct">130</span></span>
+        <span class="ptype-filter-chip">Warehouse<span class="ct">34</span></span>
+        <span class="ptype-filter-chip">Restaurant<span class="ct">18</span></span>
+        <span class="ptype-filter-chip">Industrial<span class="ct">10</span></span>
+        <span class="ptype-filter-chip">More…</span>
+        <div class="spacer"></div>
+        <div class="sort-select">Sort: gap descending ▼</div>
+      </div>
+      <table class="lease-table">
+        <thead>
+          <tr>
+            <th>Lease</th>
+            <th class="right">Current rent</th>
+            <th>Benchmark scope</th>
+            <th class="right">Market avg</th>
+            <th class="right">Gap</th>
+            <th class="right">Expires</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="lease-name">10 High Street</div>
+              <div class="lease-meta">Office · Class A · New York NY</div>
+            </td>
+            <td class="right mono">$78.40/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Midtown · Office · 12 mo</div>
+                <div class="scope-conf high">24 comps · high confidence</div>
+              </div>
+            </td>
+            <td class="right mono">$47.20/SF</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value danger mono">+$31.20</div>
+                <div class="gap-pct">+66% above market</div>
+              </div>
+            </td>
+            <td class="right expiry-cell urgent">8 mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="lease-name">One Exeter Plaza</div>
+              <div class="lease-meta">Office · Class B · Boston MA</div>
+            </td>
+            <td class="right mono">$62.10/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Back Bay · Office · 12 mo</div>
+                <div class="scope-conf high">18 comps · high confidence</div>
+              </div>
+            </td>
+            <td class="right mono">$37.60/SF</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value danger mono">+$24.50</div>
+                <div class="gap-pct">+65% above market</div>
+              </div>
+            </td>
+            <td class="right expiry-cell">14 mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="lease-name">Boca Corporate Center I</div>
+              <div class="lease-meta">Office · Class A · Boca Raton FL</div>
+            </td>
+            <td class="right mono">$48.20/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Boca Raton CBD · Office · 24 mo</div>
+                <div class="scope-conf med">6 comps · medium confidence</div>
+                <a class="widen-link">widen to market →</a>
+              </div>
+            </td>
+            <td class="right mono">$29.30/SF</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value danger mono">+$18.90</div>
+                <div class="gap-pct">+64% above market</div>
+              </div>
+            </td>
+            <td class="right expiry-cell">22 mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="lease-name">Resurgens Plaza</div>
+              <div class="lease-meta">Office · Class B · Atlanta GA</div>
+            </td>
+            <td class="right mono">$34.80/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Buckhead · Office · 12 mo</div>
+                <div class="scope-conf high">31 comps · high confidence</div>
+              </div>
+            </td>
+            <td class="right mono">$23.40/SF</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value danger mono">+$11.40</div>
+                <div class="gap-pct">+49% above market</div>
+              </div>
+            </td>
+            <td class="right expiry-cell urgent">11 mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="lease-name">Naples Executive Suites</div>
+              <div class="lease-meta">Office · Class A · Naples FL</div>
+            </td>
+            <td class="right mono">$52.00/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Naples · Office · 24 mo</div>
+                <div class="scope-conf low">4 comps · low confidence</div>
+                <a class="widen-link">widen to market →</a>
+              </div>
+            </td>
+            <td class="right mono" style="color: var(--text-3);">insufficient</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value mono" style="color: var(--text-3);">—</div>
+                <div class="gap-pct">scope too narrow</div>
+              </div>
+            </td>
+            <td class="right expiry-cell">19 mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="lease-name">772 Boylston Street</div>
+              <div class="lease-meta">Retail · Boston MA</div>
+            </td>
+            <td class="right mono">$420.00/SF</td>
+            <td>
+              <div class="scope-chip">
+                <div class="scope-text">Back Bay · Retail · 12 mo</div>
+                <div class="scope-conf high">12 comps · high confidence</div>
+              </div>
+            </td>
+            <td class="right mono">$700.00/SF</td>
+            <td class="right">
+              <div class="gap-cell">
+                <div class="gap-value success mono">−$280.00</div>
+                <div class="gap-pct">−40% below market</div>
+              </div>
+            </td>
+            <td class="right expiry-cell">36 mo</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-footer">971 leases · 379 benchmarked · <a style="color: var(--accent); text-decoration: none;">view all →</a></div>
+    </div>
+  </div>
+
+  <div class="row split-60-40">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Per-lease variance map<span class="badge-new">Fix</span></div>
+        <div class="card-actions">
+          <span>Sub-market scope</span>
+          <span class="ai-insight">AI Insight</span>
+        </div>
+      </div>
+      <div class="map-stub">
+        <div class="map-note">Each pin colored by lease-vs-its-own-market gap, not by blended portfolio average</div>
+        <div class="map-pin danger" style="top: 38%; left: 22%;" data-tt-title="Seattle metro" data-tt-meta="WA · 8 leases · Office mix" data-tt-rent="$52.40/SF" data-tt-market="$44.20/SF" data-tt-scope="Sub-market · 12mo · 18 comps" data-tt-gap="+$8.20/SF (+19%)" data-tt-conf="high">8</div>
+        <div class="map-pin danger" style="top: 32%; left: 38%;" data-tt-title="Bay Area" data-tt-meta="CA · 15 leases · Office/Industrial" data-tt-rent="$58.10/SF" data-tt-market="$51.80/SF" data-tt-scope="Sub-market · 12mo · 27 comps" data-tt-gap="+$6.30/SF (+12%)" data-tt-conf="high">15</div>
+        <div class="map-pin success" style="top: 48%; left: 28%;" data-tt-title="Los Angeles metro" data-tt-meta="CA · 5 leases · Office" data-tt-rent="$42.30/SF" data-tt-market="$48.10/SF" data-tt-scope="Sub-market · 12mo · 22 comps" data-tt-gap="−$5.80/SF (−12%)" data-tt-conf="high">5</div>
+        <div class="map-pin danger" style="top: 28%; left: 52%;" data-tt-title="Chicago metro" data-tt-meta="IL · 23 leases · Office" data-tt-rent="$38.90/SF" data-tt-market="$42.30/SF" data-tt-scope="Sub-market · 12mo · 31 comps" data-tt-gap="−$3.40/SF (−8%)" data-tt-conf="high">23</div>
+        <div class="map-pin warning" style="top: 42%; left: 48%;" data-tt-title="Dallas-Fort Worth" data-tt-meta="TX · 12 leases · mixed" data-tt-rent="$31.40/SF" data-tt-market="$28.90/SF" data-tt-scope="Sub-market · 24mo · 8 comps" data-tt-gap="+$2.50/SF (+9%)" data-tt-conf="medium">12</div>
+        <div class="map-pin danger" style="top: 32%; left: 68%;" data-tt-title="Atlanta metro" data-tt-meta="GA · 57 leases · Office mix" data-tt-rent="$25.80/SF" data-tt-market="$22.60/SF" data-tt-scope="Sub-market · 12mo · 84 comps" data-tt-gap="+$3.20/SF (+14%)" data-tt-conf="high">57</div>
+        <div class="map-pin success" style="top: 52%; left: 62%;" data-tt-title="Florida coast" data-tt-meta="FL · 14 leases · Retail/Office" data-tt-rent="$58.40/SF" data-tt-market="$74.20/SF" data-tt-scope="Sub-market · 12mo · 19 comps" data-tt-gap="−$15.80/SF (−21%)" data-tt-conf="high">14</div>
+        <div class="map-pin danger" style="top: 36%; left: 78%;" data-tt-title="Northeast corridor" data-tt-meta="NY/NJ · 29 leases · Office" data-tt-rent="$71.20/SF" data-tt-market="$48.40/SF" data-tt-scope="Sub-market · 12mo · 42 comps" data-tt-gap="+$22.80/SF (+47%)" data-tt-conf="high">29</div>
+        <div class="map-pin success" style="top: 60%; left: 78%;" data-tt-title="Mid-Atlantic" data-tt-meta="DC/VA/MD · 48 leases · mixed" data-tt-rent="$32.80/SF" data-tt-market="$41.60/SF" data-tt-scope="Sub-market · 12mo · 73 comps" data-tt-gap="−$8.80/SF (−21%)" data-tt-conf="high">48</div>
+        <div class="map-pin warning" style="top: 50%; left: 35%;" data-tt-title="Naples FL" data-tt-meta="FL · 2 leases · Office" data-tt-rent="$52.00/SF" data-tt-market="—" data-tt-scope="Sub-market · 24mo · 4 comps" data-tt-gap="insufficient data" data-tt-conf="low">2</div>
+        <div class="map-legend">
+          <div class="map-legend-item"><div class="dot" style="background: var(--danger);"></div>Above market</div>
+          <div class="map-legend-item"><div class="dot" style="background: var(--success);"></div>Below market</div>
+          <div class="map-legend-item"><div class="dot" style="background: var(--warning);"></div>Low confidence</div>
+          <div class="map-legend-item"><div class="dot" style="background: #BDBDB7;"></div>No data</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top above-market leases</div>
+          <div class="card-actions">
+            <span class="ai-insight">AI Insight</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top: 8px; padding-bottom: 8px;">
+          <div class="list-item" data-tt-title="10 High Street" data-tt-meta="Office · Class A · NYC" data-tt-rent="$78.40/SF" data-tt-market="$47.20/SF" data-tt-scope="Midtown · Office · 12mo · 24 comps" data-tt-gap="+$31.20/SF (+66%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">10 High Street</div>
+              <div class="list-item-meta">Midtown · 8 mo to expiry</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill danger" style="width: 100%;"></div></div>
+              <div class="list-item-val danger mono">+$31.20</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="One Exeter Plaza" data-tt-meta="Office · Class B · Boston MA" data-tt-rent="$62.10/SF" data-tt-market="$37.60/SF" data-tt-scope="Back Bay · Office · 12mo · 18 comps" data-tt-gap="+$24.50/SF (+65%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">One Exeter Plaza</div>
+              <div class="list-item-meta">Back Bay · 14 mo to expiry</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill danger" style="width: 79%;"></div></div>
+              <div class="list-item-val danger mono">+$24.50</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="Boca Corporate Center I" data-tt-meta="Office · Class A · Boca Raton FL" data-tt-rent="$48.20/SF" data-tt-market="$29.30/SF" data-tt-scope="Boca Raton CBD · Office · 24mo · 6 comps" data-tt-gap="+$18.90/SF (+64%)" data-tt-conf="medium">
+            <div>
+              <div class="list-item-name">Boca Corporate Center I</div>
+              <div class="list-item-meta">Boca Raton CBD · 22 mo</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill danger" style="width: 61%;"></div></div>
+              <div class="list-item-val danger mono">+$18.90</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="Resurgens Plaza" data-tt-meta="Office · Class B · Atlanta GA" data-tt-rent="$34.80/SF" data-tt-market="$23.40/SF" data-tt-scope="Buckhead · Office · 12mo · 31 comps" data-tt-gap="+$11.40/SF (+49%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">Resurgens Plaza</div>
+              <div class="list-item-meta">Buckhead · 11 mo to expiry</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill danger" style="width: 37%;"></div></div>
+              <div class="list-item-val danger mono">+$11.40</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top below-market leases</div>
+          <div class="card-actions">
+            <span class="ai-insight">AI Insight</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top: 8px; padding-bottom: 8px;">
+          <div class="list-item" data-tt-title="772 Boylston Street" data-tt-meta="Retail · Boston MA" data-tt-rent="$420.00/SF" data-tt-market="$700.00/SF" data-tt-scope="Back Bay · Retail · 12mo · 12 comps" data-tt-gap="−$280.00/SF (−40%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">772 Boylston Street</div>
+              <div class="list-item-meta">Back Bay · Retail · 36 mo</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill success" style="width: 100%;"></div></div>
+              <div class="list-item-val success mono">−$280</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="ATM City Hall Plaza" data-tt-meta="Retail · Philadelphia PA" data-tt-rent="$181.00/SF" data-tt-market="$360.00/SF" data-tt-scope="Center City · Retail · 12mo · 14 comps" data-tt-gap="−$179.00/SF (−50%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">ATM City Hall Plaza</div>
+              <div class="list-item-meta">Philadelphia · 28 mo</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill success" style="width: 64%;"></div></div>
+              <div class="list-item-val success mono">−$179</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="ATM Beacon Street" data-tt-meta="Retail · Boston MA" data-tt-rent="$192.00/SF" data-tt-market="$335.00/SF" data-tt-scope="Beacon Hill · Retail · 12mo · 9 comps" data-tt-gap="−$143.00/SF (−43%)" data-tt-conf="medium">
+            <div>
+              <div class="list-item-name">ATM Beacon Street</div>
+              <div class="list-item-meta">Boston · 24 mo</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill success" style="width: 51%;"></div></div>
+              <div class="list-item-val success mono">−$143</div>
+            </div>
+          </div>
+          <div class="list-item" data-tt-title="Copley Square" data-tt-meta="Retail · Boston MA" data-tt-rent="$214.00/SF" data-tt-market="$320.00/SF" data-tt-scope="Back Bay · Retail · 12mo · 12 comps" data-tt-gap="−$106.00/SF (−33%)" data-tt-conf="high">
+            <div>
+              <div class="list-item-name">Copley Square</div>
+              <div class="list-item-meta">Back Bay · 30 mo</div>
+            </div>
+            <div class="list-item-bar-wrap">
+              <div class="list-item-bar"><div class="fill success" style="width: 38%;"></div></div>
+              <div class="list-item-val success mono">−$106</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-divider">
+    <div class="section-divider-title">Section 2 · Market Browser (separate scroll)</div>
+  </div>
+
+  <div class="market-preview">
+    <h3>Market Browser tab</h3>
+    <p>Pure market analytics — separate from your portfolio view. Twelve widgets relocate here.</p>
+    <div class="widget-grid">
+      <div class="widget-stub">Availability by class</div>
+      <div class="widget-stub">Asking vs achieved trend</div>
+      <div class="widget-stub">Quarterly leasing volume</div>
+      <div class="widget-stub">Rent by class</div>
+      <div class="widget-stub">Availability by size</div>
+      <div class="widget-stub">Total lease area by size</div>
+      <div class="widget-stub">Top sub-markets by inventory</div>
+      <div class="widget-stub">Construction completed</div>
+      <div class="widget-stub">Supply vs demand</div>
+      <div class="widget-stub">Vacancy trend</div>
+      <div class="widget-stub">Top recent leases</div>
+      <div class="widget-stub">Top available spaces</div>
+    </div>
+  </div>
+
+  <div class="section-divider">
+    <div class="section-divider-title">Open decisions for the call</div>
+  </div>
+
+  <div class="annotation-grid">
+    <div class="annotation-card">
+      <div class="num">Decision 01</div>
+      <div class="title">Comp threshold</div>
+      <div class="desc">10 comps as the high/medium boundary, 5 as the medium/low boundary — does Nir's data support this?</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Decision 02</div>
+      <div class="title">Cascade order on widen</div>
+      <div class="desc">Sub-market + property type → market + property type. Or include a class-relaxation step in between?</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Decision 03</div>
+      <div class="title">NER vs headline rent</div>
+      <div class="desc">Pending Khushboo's lease abstraction test. Show both with a metric toggle, or pick one?</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Decision 04</div>
+      <div class="title">Per-row vs table-level scope</div>
+      <div class="desc">Each lease independently resolves scope, or one toggle applies to the whole table?</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Decision 05</div>
+      <div class="title">Action layer connection</div>
+      <div class="desc">Renegotiation pool KPI → does clicking it create a transaction in the Cockpit, or just filter the table?</div>
+    </div>
+    <div class="annotation-card">
+      <div class="num">Decision 06</div>
+      <div class="title">Module name</div>
+      <div class="desc">"Intelligence" with two tabs, or split into "Portfolio Intelligence" and "Market Intelligence" as separate nav items?</div>
+    </div>
+  </div>
+
+  <footer>
+    Wireframe v1 · Working draft · Not final design · Built for review
+  </footer>
+
+</div>
+
+<div class="tooltip" id="globalTooltip"></div>
+
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-eyebrow">Property type drill-down</div>
+    <div class="drawer-title" id="drawerTitle">Office portfolio</div>
+    <div class="drawer-subtitle" id="drawerSubtitle">130 leases · −$4.42/SF net gap · 18 sub-markets</div>
+    <button class="drawer-close" id="drawerClose">×</button>
+  </div>
+  <div class="drawer-mini-kpis" id="drawerKpis">
+    <div class="drawer-mini-kpi">
+      <div class="lbl">Above market</div>
+      <div class="val danger" id="kpiAbove">64</div>
+    </div>
+    <div class="drawer-mini-kpi">
+      <div class="lbl">Below market</div>
+      <div class="val success" id="kpiBelow">46</div>
+    </div>
+    <div class="drawer-mini-kpi">
+      <div class="lbl">Insufficient data</div>
+      <div class="val muted" id="kpiInsufficient">20</div>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section-title">
+      <span>Sub-market segmentation</span>
+      <span class="sort">Sort: gap descending ▼</span>
+    </div>
+    <div class="submarket-row header">
+      <div>Sub-market</div>
+      <div style="text-align: right;">Leases</div>
+      <div style="text-align: right;">Your avg / market</div>
+      <div style="text-align: right;">Gap</div>
+    </div>
+    <div id="submarketList"></div>
+  </div>
+  <div class="drawer-footer">
+    <div class="drawer-footer-meta" id="drawerFooterMeta">Showing all sub-markets where Bosch has Office leases</div>
+    <button class="drawer-footer-action" id="drawerFooterAction">Filter table to all 130 office leases →</button>
+  </div>
+</div>
+
+<script>
+  const propertyTypeData = {
+    office: {
+      name: 'Office',
+      leases: 130,
+      netGap: '−$4.42/SF',
+      submarketCount: 18,
+      above: 64, below: 46, insufficient: 20,
+      submarkets: [
+        { name: 'Midtown', city: 'New York NY', leases: 8, market: 47.20, yours: 78.40, gap: 31.20, conf: 'high', comps: 24 },
+        { name: 'Back Bay', city: 'Boston MA', leases: 12, market: 37.60, yours: 62.10, gap: 24.50, conf: 'high', comps: 18 },
+        { name: 'Boca Raton CBD', city: 'Boca Raton FL', leases: 6, market: 29.30, yours: 48.20, gap: 18.90, conf: 'med', comps: 6 },
+        { name: 'Buckhead', city: 'Atlanta GA', leases: 23, market: 23.40, yours: 34.80, gap: 11.40, conf: 'high', comps: 31 },
+        { name: 'Bergen-Meadowlands', city: 'Northern NJ', leases: 9, market: 34.20, yours: 41.80, gap: 7.60, conf: 'med', comps: 7 },
+        { name: 'Airport/South Atlanta', city: 'Atlanta GA', leases: 21, market: 19.10, yours: 25.20, gap: 6.10, conf: 'high', comps: 28 },
+        { name: 'I-85 North Corridor', city: 'Atlanta GA', leases: 18, market: 22.80, yours: 28.50, gap: 5.70, conf: 'high', comps: 22 },
+        { name: 'I-75 South / Henry County', city: 'Atlanta GA', leases: 14, market: 20.10, yours: 24.30, gap: 4.20, conf: 'high', comps: 19 },
+        { name: 'West Loop', city: 'Chicago IL', leases: 11, market: 42.30, yours: 38.90, gap: -3.40, conf: 'high', comps: 26 },
+        { name: 'CBD', city: 'various', leases: 4, market: 41.20, yours: 35.60, gap: -5.60, conf: 'med', comps: 8 },
+        { name: 'Naples', city: 'Naples FL', leases: 4, market: null, yours: 52.00, gap: null, conf: 'low', comps: 4 }
+      ]
+    },
+    other: {
+      name: 'Other',
+      leases: 113,
+      netGap: '+$23.24/SF',
+      submarketCount: 14,
+      above: 67, below: 46, insufficient: 0,
+      submarkets: [
+        { name: 'Mixed-use locations', city: 'various', leases: 38, market: 18.40, yours: 41.60, gap: 23.20, conf: 'high', comps: 45 },
+        { name: 'Specialty retail', city: 'various', leases: 22, market: 24.80, yours: 49.20, gap: 24.40, conf: 'high', comps: 19 },
+        { name: 'Suburban flex', city: 'various', leases: 17, market: 14.20, yours: 38.10, gap: 23.90, conf: 'med', comps: 9 },
+        { name: 'Tech corridors', city: 'various', leases: 14, market: 32.10, yours: 56.80, gap: 24.70, conf: 'high', comps: 16 },
+        { name: 'Lifestyle centers', city: 'various', leases: 12, market: 28.40, yours: 51.30, gap: 22.90, conf: 'med', comps: 8 },
+        { name: 'Other specialty', city: 'various', leases: 10, market: 22.80, yours: 44.20, gap: 21.40, conf: 'med', comps: 7 }
+      ]
+    },
+    warehouse: {
+      name: 'Warehouse',
+      leases: 34,
+      netGap: '−$7.53/SF',
+      submarketCount: 9,
+      above: 6, below: 28, insufficient: 0,
+      submarkets: [
+        { name: 'Inland Empire West', city: 'CA', leases: 6, market: 14.20, yours: 21.50, gap: 7.30, conf: 'high', comps: 18 },
+        { name: 'Bergen-Meadowlands', city: 'Northern NJ', leases: 5, market: 12.10, yours: 18.40, gap: 6.30, conf: 'med', comps: 8 },
+        { name: 'I-285 NE Corridor', city: 'Atlanta GA', leases: 8, market: 8.40, yours: 12.80, gap: 4.40, conf: 'high', comps: 22 },
+        { name: 'I-65 South', city: 'Indianapolis IN', leases: 4, market: 6.30, yours: 11.20, gap: 4.90, conf: 'med', comps: 6 },
+        { name: 'PHL Airport', city: 'Philadelphia PA', leases: 3, market: null, yours: 14.50, gap: null, conf: 'low', comps: 3 },
+        { name: 'Various other markets', city: '', leases: 8, market: 9.80, yours: 14.20, gap: 4.40, conf: 'med', comps: 12 }
+      ]
+    },
+    restaurant: {
+      name: 'Restaurant',
+      leases: 18,
+      netGap: '+$20.37/SF',
+      submarketCount: 11,
+      above: 2, below: 16, insufficient: 0,
+      submarkets: [
+        { name: 'Times Square', city: 'New York NY', leases: 2, market: 220.00, yours: 168.00, gap: -52.00, conf: 'high', comps: 14 },
+        { name: 'Back Bay', city: 'Boston MA', leases: 3, market: 95.00, yours: 64.00, gap: -31.00, conf: 'high', comps: 11 },
+        { name: 'Lincoln Park', city: 'Chicago IL', leases: 2, market: 78.00, yours: 52.00, gap: -26.00, conf: 'med', comps: 7 },
+        { name: 'South Beach', city: 'Miami FL', leases: 2, market: 110.00, yours: 88.00, gap: -22.00, conf: 'med', comps: 6 },
+        { name: 'Other', city: 'various', leases: 9, market: 58.00, yours: 41.00, gap: -17.00, conf: 'med', comps: 18 }
+      ]
+    },
+    office_warehouse: {
+      name: 'Office/Warehouse',
+      leases: 15,
+      netGap: '−$5.90/SF',
+      submarketCount: 8,
+      above: 13, below: 1, insufficient: 1,
+      submarkets: [
+        { name: 'Inland Empire East', city: 'CA', leases: 4, market: 16.20, yours: 22.40, gap: 6.20, conf: 'high', comps: 13 },
+        { name: 'I-285 NE Corridor', city: 'Atlanta GA', leases: 3, market: 14.80, yours: 20.10, gap: 5.30, conf: 'med', comps: 7 },
+        { name: 'I-65 North', city: 'Nashville TN', leases: 3, market: 11.20, yours: 16.80, gap: 5.60, conf: 'med', comps: 8 },
+        { name: 'Various', city: 'various', leases: 5, market: 13.40, yours: 19.20, gap: 5.80, conf: 'med', comps: 11 }
+      ]
+    },
+    general_office: {
+      name: 'General Office',
+      leases: 14,
+      netGap: '−$13.52/SF',
+      submarketCount: 7,
+      above: 11, below: 3, insufficient: 0,
+      submarkets: [
+        { name: 'Midtown East', city: 'New York NY', leases: 2, market: 52.00, yours: 78.40, gap: 26.40, conf: 'high', comps: 16 },
+        { name: 'Financial District', city: 'San Francisco CA', leases: 3, market: 64.20, yours: 84.10, gap: 19.90, conf: 'high', comps: 14 },
+        { name: 'Loop', city: 'Chicago IL', leases: 2, market: 38.40, yours: 51.80, gap: 13.40, conf: 'high', comps: 18 },
+        { name: 'Other', city: 'various', leases: 7, market: 31.20, yours: 41.80, gap: 10.60, conf: 'med', comps: 14 }
+      ]
+    },
+    industrial: {
+      name: 'Industrial',
+      leases: 10,
+      netGap: '−$7.66/SF',
+      submarketCount: 6,
+      above: 8, below: 2, insufficient: 0,
+      submarkets: [
+        { name: 'I-78 Corridor', city: 'PA/NJ', leases: 3, market: 9.20, yours: 14.60, gap: 5.40, conf: 'med', comps: 7 },
+        { name: 'Inland Empire West', city: 'CA', leases: 2, market: 14.80, yours: 21.40, gap: 6.60, conf: 'high', comps: 12 },
+        { name: 'I-285 NE Corridor', city: 'Atlanta GA', leases: 2, market: 8.10, yours: 13.40, gap: 5.30, conf: 'med', comps: 8 },
+        { name: 'Other', city: 'various', leases: 3, market: 9.40, yours: 15.20, gap: 5.80, conf: 'med', comps: 9 }
+      ]
+    },
+    manufacturing: {
+      name: 'Manufacturing',
+      leases: 9,
+      netGap: '−$10.34/SF',
+      submarketCount: 6,
+      above: 9, below: 0, insufficient: 0,
+      submarkets: [
+        { name: 'I-65 South', city: 'Indianapolis IN', leases: 2, market: 7.20, yours: 13.80, gap: 6.60, conf: 'med', comps: 6 },
+        { name: 'I-94 Corridor', city: 'MI', leases: 2, market: 8.40, yours: 15.20, gap: 6.80, conf: 'med', comps: 7 },
+        { name: 'Greenville-Spartanburg', city: 'SC', leases: 2, market: 6.80, yours: 14.10, gap: 7.30, conf: 'high', comps: 11 },
+        { name: 'Other', city: 'various', leases: 3, market: 8.20, yours: 16.40, gap: 8.20, conf: 'med', comps: 8 }
+      ]
+    }
+  };
+
+  function fmtCurrency(v) {
+    if (v === null || v === undefined) return '—';
+    const sign = v < 0 ? '−' : '+';
+    return sign + '$' + Math.abs(v).toFixed(2);
+  }
+
+  function renderDrawer(typeId) {
+    const data = propertyTypeData[typeId];
+    if (!data) return;
+    document.getElementById('drawerTitle').textContent = data.name + ' portfolio';
+    document.getElementById('drawerSubtitle').textContent = data.leases + ' leases · ' + data.netGap + ' net gap · ' + data.submarketCount + ' sub-markets';
+    document.getElementById('kpiAbove').textContent = data.above;
+    document.getElementById('kpiBelow').textContent = data.below;
+    document.getElementById('kpiInsufficient').textContent = data.insufficient;
+    document.getElementById('drawerFooterAction').textContent = 'Filter table to all ' + data.leases + ' ' + data.name.toLowerCase() + ' leases →';
+    document.getElementById('drawerFooterMeta').textContent = 'Showing all sub-markets where Bosch has ' + data.name + ' leases';
+
+    const sorted = data.submarkets.slice().sort(function(a, b) {
+      const av = a.gap === null ? -Infinity : a.gap;
+      const bv = b.gap === null ? -Infinity : b.gap;
+      return bv - av;
+    });
+
+    const list = document.getElementById('submarketList');
+    list.innerHTML = sorted.map(function(s) {
+      const gapClass = s.gap === null ? 'muted' : (s.gap > 0 ? 'danger' : 'success');
+      const gapDisplay = s.gap === null ? 'insufficient' : fmtCurrency(s.gap);
+      const marketDisplay = s.market === null ? '—' : '$' + s.market.toFixed(2);
+      return '<div class="submarket-row">' +
+        '<div>' +
+          '<div class="submarket-name">' + s.name + '</div>' +
+          '<div class="submarket-meta">' + s.city + ' · ' + s.comps + ' comps</div>' +
+        '</div>' +
+        '<div class="submarket-count mono">' + s.leases + '</div>' +
+        '<div class="submarket-rents">' +
+          '<span class="yours mono">$' + s.yours.toFixed(2) + '</span>' +
+          '<span class="market mono">vs ' + marketDisplay + '</span>' +
+        '</div>' +
+        '<div class="submarket-gap">' +
+          '<div class="val ' + gapClass + ' mono">' + gapDisplay + '</div>' +
+          '<div class="conf ' + s.conf + '">' + s.conf + ' confidence</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function openDrawer(typeId) {
+    renderDrawer(typeId);
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('drawerOverlay').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('open');
+  }
+
+  document.querySelectorAll('.ptype-row[data-ptype]').forEach(function(row) {
+    row.addEventListener('click', function() {
+      openDrawer(row.getAttribute('data-ptype'));
+    });
+  });
+  document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+  document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDrawer();
+  });
+
+  // TOOLTIP SYSTEM
+  const tooltip = document.getElementById('globalTooltip');
+
+  function buildTooltip(el) {
+    const title = el.dataset.ttTitle || '';
+    const meta = el.dataset.ttMeta || '';
+    const rent = el.dataset.ttRent || '';
+    const market = el.dataset.ttMarket || '';
+    const scope = el.dataset.ttScope || '';
+    const gap = el.dataset.ttGap || '';
+    const conf = el.dataset.ttConf || '';
+    const formula = el.dataset.ttFormula || '';
+    if (!title) return '';
+
+    let gapClass = '';
+    if (gap.indexOf('+') === 0) gapClass = 'danger';
+    else if (gap.indexOf('−') === 0 || gap.indexOf('-') === 0) gapClass = 'success';
+
+    let confLabel = '';
+    if (conf === 'high') confLabel = '<span class="value success">● high confidence</span>';
+    else if (conf === 'medium' || conf === 'med') confLabel = '<span class="value warning">● medium confidence</span>';
+    else if (conf === 'low') confLabel = '<span class="value danger">● low confidence</span>';
+
+    let html = '<div class="tooltip-title">' + title + '</div>';
+    if (meta) html += '<div class="tooltip-meta">' + meta + '</div>';
+    html += '<div class="tooltip-row"><span class="label">Lease pays</span><span class="value">' + rent + '</span></div>';
+    html += '<div class="tooltip-row"><span class="label">Market avg</span><span class="value">' + market + '</span></div>';
+    html += '<div class="tooltip-row"><span class="label">Scope used</span><span class="value">' + scope + '</span></div>';
+    html += '<div class="tooltip-divider"></div>';
+    html += '<div class="tooltip-row"><span class="label">Gap</span><span class="value ' + gapClass + '">' + gap + '</span></div>';
+    if (confLabel) {
+      html += '<div class="tooltip-row"><span class="label">Confidence</span>' + confLabel + '</div>';
+    }
+    if (formula) html += '<div class="tooltip-formula">' + formula + '</div>';
+    return html;
+  }
+
+  function showTooltip(el) {
+    const content = buildTooltip(el);
+    if (!content) return;
+    tooltip.innerHTML = content;
+    tooltip.classList.add('show');
+    const rect = el.getBoundingClientRect();
+    const ttRect = tooltip.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - ttRect.width / 2;
+    let top = rect.top - ttRect.height - 10;
+    if (top < 10) top = rect.bottom + 10;
+    if (left < 10) left = 10;
+    if (left + ttRect.width > window.innerWidth - 10) left = window.innerWidth - ttRect.width - 10;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+  }
+
+  function hideTooltip() {
+    tooltip.classList.remove('show');
+  }
+
+  document.querySelectorAll('[data-tt-title]').forEach(function(el) {
+    el.addEventListener('mouseenter', function() { showTooltip(el); });
+    el.addEventListener('mouseleave', hideTooltip);
+  });
+</script>
+
+</body>
+</html>
