@@ -15,6 +15,9 @@ export type Lease = {
   submarket: string
   city: string
   state: string
+  /** Approximate longitude / latitude of the lease for map plotting. */
+  lng: number
+  lat: number
   sf: number
   /** Current contractual rent per square foot, annualized. */
   currentRentPsf: number
