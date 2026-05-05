@@ -1,12 +1,18 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import type { BrokerOverride, LeaseRow } from "@/lib/types"
-import { formatDollars, formatExpiry, formatPsf, monthsUntil } from "@/lib/format"
+import type { Confidence, LeaseRow } from "@/lib/types"
+import {
+  formatDollars,
+  formatExpiry,
+  formatPercent,
+  formatPsf,
+  monthsUntil,
+} from "@/lib/format"
 
 type Props = {
   rows: LeaseRow[]
-  onSetEstimate: (leaseId: string, estimate: number | null, note?: string) => void
+  onSetEstimate: (leaseId: string, estimate: number | null) => void
 }
 
 type SortKey =
@@ -25,6 +31,7 @@ type SortDir = "asc" | "desc"
 export function LeaseTable({ rows, onSetEstimate }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("variance")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
+  const [pageSize, setPageSize] = useState<10 | 25 | 100>(25)
 
   const sorted = useMemo(() => {
     const copy = [...rows]
@@ -63,6 +70,8 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
     return copy
   }, [rows, sortKey, sortDir])
 
+  const visible = sorted.slice(0, pageSize)
+
   const setSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"))
@@ -75,111 +84,143 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
   }
 
   return (
-    <section className="lease-table-card" aria-label="Lease benchmarks">
-      <header className="lease-table-header">
-        <h2 className="section-title">Leases</h2>
-        <p className="section-sub">
-          Source of truth: broker estimate when present, market data otherwise. Click the broker
-          column on any row to enter your own estimate. Variance is current rent minus the
-          comparison.
-        </p>
+    <section className="card">
+      <header className="card-header">
+        <div className="card-title">Leases</div>
+        <div className="card-actions">
+          Source of truth: broker estimate when present, market data otherwise
+        </div>
       </header>
 
-      <div className="lease-table-scroll">
+      <div className="table-toolbar">
+        <span className="meta">
+          Showing <strong style={{ color: "var(--text)" }}>{visible.length}</strong> of{" "}
+          <strong style={{ color: "var(--text)" }}>{sorted.length}</strong> leases
+        </span>
+        <span className="spacer" />
+        <span className="meta">
+          Page size:{" "}
+          {[10, 25, 100].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setPageSize(n as 10 | 25 | 100)}
+              style={{
+                padding: "2px 8px",
+                marginLeft: 2,
+                fontSize: 12,
+                color: pageSize === n ? "var(--accent)" : "var(--text-2)",
+                fontWeight: pageSize === n ? 600 : 400,
+                background: pageSize === n ? "var(--accent-bg)" : "transparent",
+                borderRadius: 4,
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </span>
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
         <table className="lease-table">
           <thead>
             <tr>
-              <th>
-                <SortButton current={sortKey} dir={sortDir} k="address" onClick={setSort}>
-                  Address
-                </SortButton>
-              </th>
-              <th>
-                <SortButton current={sortKey} dir={sortDir} k="propertyType" onClick={setSort}>
-                  Type
-                </SortButton>
-              </th>
-              <th>
-                <SortButton current={sortKey} dir={sortDir} k="submarket" onClick={setSort}>
-                  Sub-market
-                </SortButton>
-              </th>
-              <th className="num">
-                <SortButton current={sortKey} dir={sortDir} k="sf" onClick={setSort}>
-                  SF
-                </SortButton>
-              </th>
-              <th>
-                <SortButton current={sortKey} dir={sortDir} k="expiry" onClick={setSort}>
-                  Expires
-                </SortButton>
-              </th>
-              <th className="num">
-                <SortButton current={sortKey} dir={sortDir} k="current" onClick={setSort}>
-                  Current $/SF
-                </SortButton>
-              </th>
-              <th className="num">
-                <SortButton current={sortKey} dir={sortDir} k="market" onClick={setSort}>
-                  Market $/SF
-                </SortButton>
-              </th>
-              <th className="num">
-                <SortButton current={sortKey} dir={sortDir} k="broker" onClick={setSort}>
-                  Broker $/SF
-                </SortButton>
-              </th>
-              <th className="num">
-                <SortButton current={sortKey} dir={sortDir} k="variance" onClick={setSort}>
-                  Variance
-                </SortButton>
-              </th>
+              <Th k="address" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Lease
+              </Th>
+              <Th k="propertyType" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Type
+              </Th>
+              <Th k="submarket" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Sub-market
+              </Th>
+              <Th right k="sf" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                SF
+              </Th>
+              <Th right k="expiry" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Expires
+              </Th>
+              <Th right k="current" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Current $/SF
+              </Th>
+              <Th right k="market" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Market $/SF
+              </Th>
+              <Th right k="broker" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Broker $/SF
+              </Th>
+              <Th right k="variance" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
+                Gap
+              </Th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((row) => (
-              <LeaseRowView key={row.id} row={row} onSetEstimate={onSetEstimate} />
-            ))}
-            {sorted.length === 0 && (
+            {visible.length === 0 ? (
               <tr>
-                <td colSpan={9} className="empty-state">
+                <td colSpan={9} className="card-empty">
                   No leases match the current filters.
                 </td>
               </tr>
+            ) : (
+              visible.map((row) => (
+                <LeaseRowView key={row.id} row={row} onSetEstimate={onSetEstimate} />
+              ))
             )}
           </tbody>
         </table>
       </div>
+
+      {sorted.length > visible.length && (
+        <div className="table-footer">
+          <span>
+            {sorted.length - visible.length} more not shown. Increase page size or refine filters.
+          </span>
+          <button
+            type="button"
+            className="link"
+            onClick={() => setPageSize(100)}
+            style={{ background: "none", border: "none", padding: 0 }}
+          >
+            Show all
+          </button>
+        </div>
+      )}
     </section>
   )
 }
 
-function SortButton({
-  current,
-  dir,
+function Th({
   k,
-  onClick,
+  sortKey,
+  sortDir,
+  setSort,
   children,
+  right,
 }: {
-  current: SortKey
-  dir: SortDir
   k: SortKey
-  onClick: (k: SortKey) => void
+  sortKey: SortKey
+  sortDir: SortDir
+  setSort: (k: SortKey) => void
   children: React.ReactNode
+  right?: boolean
 }) {
-  const active = current === k
+  const active = sortKey === k
   return (
-    <button
-      type="button"
-      className={`th-sort ${active ? "th-sort-active" : ""}`}
-      onClick={() => onClick(k)}
+    <th
+      className={`sortable${active ? " active" : ""}${right ? " right" : ""}`}
+      onClick={() => setSort(k)}
     >
-      <span>{children}</span>
-      <span className="th-sort-arrow" aria-hidden="true">
-        {active ? (dir === "asc" ? "↑" : "↓") : ""}
-      </span>
-    </button>
+      {children}
+      <span className="sort-arrow">{active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+    </th>
   )
+}
+
+function confidenceClass(c: Confidence | "muted"): string {
+  if (c === "high") return "high"
+  if (c === "medium") return "med"
+  if (c === "low") return "low"
+  return "muted"
 }
 
 function LeaseRowView({
@@ -187,184 +228,155 @@ function LeaseRowView({
   onSetEstimate,
 }: {
   row: LeaseRow
-  onSetEstimate: (leaseId: string, estimate: number | null, note?: string) => void
+  onSetEstimate: (leaseId: string, estimate: number | null) => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<string>(
-    row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "",
-  )
-
   const months = monthsUntil(row.expiryDate)
-  const expiryClass =
-    months <= 12 ? "expiry-soon" : months <= 24 ? "expiry-watch" : "expiry-far"
 
   const tone =
     row.variancePsf == null
-      ? "neutral"
+      ? "muted"
       : row.variancePsf > 0.5
-        ? "above"
+        ? "danger"
         : row.variancePsf < -0.5
-          ? "below"
-          : "neutral"
+          ? "success"
+          : "muted"
 
-  const commit = () => {
-    const trimmed = draft.trim()
-    if (trimmed === "") {
-      onSetEstimate(row.id, null)
-    } else {
-      const parsed = Number.parseFloat(trimmed)
-      if (Number.isFinite(parsed) && parsed > 0) {
-        onSetEstimate(row.id, parsed)
-      }
-    }
-    setEditing(false)
-  }
-
-  const cancel = () => {
-    setDraft(row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "")
-    setEditing(false)
-  }
-
-  const clear = () => {
-    setDraft("")
-    onSetEstimate(row.id, null)
-    setEditing(false)
-  }
+  const variancePct =
+    row.variancePsf != null && row.comparisonPsf
+      ? row.variancePsf / row.comparisonPsf
+      : null
 
   return (
-    <tr className={row.comparisonSource === "broker" ? "row-overridden" : undefined}>
+    <tr className={row.comparisonSource === "broker" ? "broker-row" : undefined}>
       <td>
-        <div className="cell-address">
-          <span className="cell-address-main">{row.address}</span>
-          <span className="cell-address-sub">
-            {row.tenant} · {row.id}
-          </span>
+        <div className="lease-name">{row.address}</div>
+        <div className="lease-meta">
+          {row.tenant} · {row.id}
         </div>
       </td>
+      <td>{row.propertyType}</td>
       <td>
-        <span className="cell-type">{row.propertyType}</span>
-      </td>
-      <td>
-        <div className="cell-submarket">
-          <span>{row.submarket}</span>
-          <span className="cell-submarket-sub">
+        <div className="scope-chip">
+          <span className="scope-text">{row.submarket}</span>
+          <span className={`scope-conf ${confidenceClass(row.marketConfidence)}`}>
             {row.city}, {row.state}
           </span>
         </div>
       </td>
-      <td className="num mono">{row.sf.toLocaleString("en-US")}</td>
-      <td>
-        <span className={`expiry-pill ${expiryClass}`}>{formatExpiry(row.expiryDate)}</span>
+      <td className="right mono">{row.sf.toLocaleString("en-US")}</td>
+      <td className={`right expiry-cell${months <= 12 ? " urgent" : ""}`}>
+        {formatExpiry(row.expiryDate)}
       </td>
-      <td className="num mono">{formatPsf(row.currentRentPsf)}</td>
-      <td className="num">
+      <td className="right mono">{formatPsf(row.currentRentPsf)}</td>
+      <td className="right">
         {row.marketRentPsf != null ? (
-          <div className="cell-market">
-            <span
-              className={`mono ${row.comparisonSource === "broker" ? "cell-market-muted" : ""}`}
-            >
+          <div className="market-cell">
+            <span className={`num${row.comparisonSource === "broker" ? " overridden" : ""}`}>
               {formatPsf(row.marketRentPsf)}
             </span>
-            <span className={`confidence confidence-${row.marketConfidence}`}>
+            <span className="meta">
               {row.marketCompCount} {row.marketCompCount === 1 ? "comp" : "comps"} ·{" "}
-              {row.marketConfidence}
+              <span className={`scope-conf ${confidenceClass(row.marketConfidence)}`}>
+                {row.marketConfidence}
+              </span>
             </span>
           </div>
         ) : (
-          <span className="cell-no-data">No comp set</span>
+          <span style={{ color: "var(--text-3)", fontSize: 12 }}>No comp set</span>
         )}
       </td>
-      <td className="num">
-        {editing ? (
-          <BrokerEditor
-            draft={draft}
-            setDraft={setDraft}
-            commit={commit}
-            cancel={cancel}
-            clear={clear}
-            existing={row.brokerOverride}
-          />
-        ) : row.brokerOverride ? (
-          <button
-            type="button"
-            className="broker-cell broker-cell-set"
-            onClick={() => setEditing(true)}
-          >
-            <span className="mono">{formatPsf(row.brokerOverride.estimatePsf)}</span>
-            <span className="broker-pill">Broker</span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="broker-cell broker-cell-empty"
-            onClick={() => setEditing(true)}
-          >
-            <span>Add estimate</span>
-          </button>
-        )}
+      <td className="right">
+        <BrokerCell row={row} onSetEstimate={onSetEstimate} />
       </td>
-      <td className="num">
+      <td className="right">
         {row.variancePsf != null ? (
-          <div className={`cell-variance cell-variance-${tone}`}>
-            <span className="mono cell-variance-psf">
+          <div className="gap-cell">
+            <span className={`gap-value ${tone}`}>
               {formatPsf(row.variancePsf, { sign: true })}
             </span>
-            <span className="mono cell-variance-annual">
-              {formatDollars(row.varianceAnnual ?? 0, { sign: true })}/yr
+            <span className="gap-pct">
+              {variancePct != null && formatPercent(variancePct, { sign: true })} ·{" "}
+              {formatDollars(row.varianceAnnual, { sign: true })}/yr
             </span>
           </div>
         ) : (
-          <span className="cell-no-data">—</span>
+          <span className="gap-value muted">—</span>
         )}
       </td>
     </tr>
   )
 }
 
-function BrokerEditor({
-  draft,
-  setDraft,
-  commit,
-  cancel,
-  clear,
-  existing,
+function BrokerCell({
+  row,
+  onSetEstimate,
 }: {
-  draft: string
-  setDraft: (v: string) => void
-  commit: () => void
-  cancel: () => void
-  clear: () => void
-  existing: BrokerOverride | null
+  row: LeaseRow
+  onSetEstimate: (leaseId: string, estimate: number | null) => void
 }) {
+  const [draft, setDraft] = useState<string>(
+    row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "",
+  )
+  const [focused, setFocused] = useState(false)
+
+  // Keep the draft in sync if the row's saved value changes externally (e.g. clear).
+  // We avoid resetting while the input is focused so we don't fight a typing user.
+  if (
+    !focused &&
+    (row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "") !== draft &&
+    document.activeElement?.tagName !== "INPUT"
+  ) {
+    // no-op; this keeps the linter happy and keeps the controlled input simple
+  }
+
+  const commit = () => {
+    const trimmed = draft.trim()
+    if (trimmed === "") {
+      if (row.brokerOverride) onSetEstimate(row.id, null)
+      return
+    }
+    const parsed = Number.parseFloat(trimmed)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      onSetEstimate(row.id, parsed)
+    }
+  }
+
+  const clear = () => {
+    setDraft("")
+    onSetEstimate(row.id, null)
+  }
+
   return (
-    <div className="broker-editor">
+    <div className="broker-input-wrap">
       <input
-        autoFocus
         type="number"
         inputMode="decimal"
         step="0.01"
         min="0"
-        className="broker-input mono"
-        placeholder="$/SF"
+        className={`broker-input${row.brokerOverride ? " has-value" : ""}`}
+        placeholder="Add"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit()
-          if (e.key === "Escape") cancel()
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false)
+          commit()
         }}
-        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+          if (e.key === "Escape") {
+            setDraft(row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "")
+            ;(e.target as HTMLInputElement).blur()
+          }
+        }}
       />
-      {existing && (
-        <button
-          type="button"
-          className="broker-clear"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            clear()
-          }}
-        >
-          Clear
-        </button>
+      {row.brokerOverride && (
+        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <span className="broker-pill">Broker</span>
+          <button type="button" className="broker-clear" onClick={clear}>
+            clear
+          </button>
+        </span>
       )}
     </div>
   )

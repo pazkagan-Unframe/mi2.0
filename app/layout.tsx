@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portfolio Intelligence — Wireframe v1",
+  title: "Intelligence — Bosch portfolio",
   description:
-    "Working draft for Thursday review. Benchmark your portfolio. Browse the market.",
+    "Benchmark your portfolio against the market. Override with broker estimates per lease.",
 };
 
 export const viewport: Viewport = {
@@ -30,7 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      style={{ background: "var(--bg)" }}
+    >
       <body>{children}</body>
     </html>
   );

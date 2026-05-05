@@ -1,24 +1,29 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { FilterBar } from "@/components/filter-bar"
-import { HeadlineChart } from "@/components/headline-chart"
-import { HeadlineSummary } from "@/components/headline-summary"
-import { LeaseTable } from "@/components/lease-table"
-import { MethodologyPanel } from "@/components/methodology-panel"
+import { TopBar } from "@/components/top-bar"
 import { PageHeader } from "@/components/page-header"
+import { FilterBar } from "@/components/filter-bar"
+import { PortfolioKpis } from "@/components/portfolio-kpis"
+import { PortfolioBreakdown } from "@/components/portfolio-breakdown"
+import { LeaseTable } from "@/components/lease-table"
+import { MarketMap } from "@/components/market-map"
+import { TopVarianceLists } from "@/components/top-variance-lists"
+import { MethodologyPanel } from "@/components/methodology-panel"
+import { SAMPLE_LEASES } from "@/lib/leases"
 import {
+  EMPTY_FILTERS,
   aggregate,
   applyFilters,
   buildLeaseRows,
   distinctSubmarkets,
-  EMPTY_FILTERS,
   type Filters,
 } from "@/lib/calculations"
-import { SAMPLE_LEASES } from "@/lib/leases"
 import type { BrokerOverrides, PropertyType } from "@/lib/types"
 
-const STORAGE_KEY = "halberd:broker-overrides:v1"
+const STORAGE_KEY = "oneadvise:broker-overrides:v1"
+// In production this would come from auth — keeping it simple for the prototype.
+const BROKER_ID = "pk"
 
 export default function Page() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
@@ -26,121 +31,127 @@ export default function Page() {
   const [methodologyOpen, setMethodologyOpen] = useState(false)
   const [hydrated, setHydrated] = useState(false)
 
-  // Load broker overrides from localStorage on mount.
-  // Per-broker persistence; in production this would key off the authenticated broker id.
+  // Hydrate broker overrides from localStorage on mount, scoped per broker.
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
+      const raw = window.localStorage.getItem(`${STORAGE_KEY}:${BROKER_ID}`)
       if (raw) {
         const parsed = JSON.parse(raw) as BrokerOverrides
-        if (parsed && typeof parsed === "object") {
-          setOverrides(parsed)
-        }
+        if (parsed && typeof parsed === "object") setOverrides(parsed)
       }
     } catch {
-      // Ignore corrupt storage; fall back to empty overrides.
+      // Corrupt or missing — start clean.
     }
     setHydrated(true)
   }, [])
 
-  // Persist whenever overrides change (after the initial hydration).
+  // Persist on every change after initial hydration.
   useEffect(() => {
     if (!hydrated) return
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+      window.localStorage.setItem(
+        `${STORAGE_KEY}:${BROKER_ID}`,
+        JSON.stringify(overrides),
+      )
     } catch {
-      // Storage may be unavailable (private mode, quota); silently skip.
+      // Storage unavailable — fail silently in the prototype.
     }
   }, [overrides, hydrated])
 
-  const handleSetEstimate = useCallback(
-    (leaseId: string, estimate: number | null, note?: string) => {
-      setOverrides((prev) => {
-        if (estimate == null) {
-          if (!prev[leaseId]) return prev
-          const next = { ...prev }
-          delete next[leaseId]
-          return next
-        }
-        return {
-          ...prev,
-          [leaseId]: {
-            estimatePsf: estimate,
-            note,
-            updatedAt: new Date().toISOString(),
-          },
-        }
-      })
-    },
-    [],
-  )
+  const handleSetEstimate = useCallback((leaseId: string, estimate: number | null) => {
+    setOverrides((prev) => {
+      if (estimate == null) {
+        if (!prev[leaseId]) return prev
+        const next = { ...prev }
+        delete next[leaseId]
+        return next
+      }
+      return {
+        ...prev,
+        [leaseId]: {
+          estimatePsf: estimate,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
+  }, [])
 
-  // Compute everything downstream from overrides + filters.
+  // Everything downstream is computed from overrides + filters.
   const allRows = useMemo(() => buildLeaseRows(SAMPLE_LEASES, overrides), [overrides])
   const filteredRows = useMemo(() => applyFilters(allRows, filters), [allRows, filters])
-  const filteredAgg = useMemo(() => aggregate(filteredRows), [filteredRows])
+  const agg = useMemo(() => aggregate(filteredRows), [filteredRows])
 
-  // Sub-market list reflects current property-type filter (empty = all types).
-  const availableSubmarkets = useMemo(() => {
-    const scope = filters.propertyType
+  // Filter-bar metadata.
+  const propertyTypeCounts = useMemo(() => {
+    const m = new Map<PropertyType, number>()
+    for (const r of allRows) m.set(r.propertyType, (m.get(r.propertyType) ?? 0) + 1)
+    return m
+  }, [allRows])
+
+  const submarketCounts = useMemo(() => {
+    const m = new Map<string, number>()
+    const source = filters.propertyType
       ? allRows.filter((r) => r.propertyType === filters.propertyType)
       : allRows
-    return distinctSubmarkets(scope)
+    for (const r of source) m.set(r.submarket, (m.get(r.submarket) ?? 0) + 1)
+    return m
   }, [allRows, filters.propertyType])
 
-  // Chart drill-down: clicking a property-type bar (no type filter) sets propertyType;
-  // clicking a sub-market bar (within a type filter) sets submarket.
-  const handleChartSelect = useCallback(
-    (groupKey: string) => {
-      if (!filters.propertyType) {
-        setFilters({ ...filters, propertyType: groupKey as PropertyType, submarket: null })
-      } else {
-        setFilters({ ...filters, submarket: groupKey })
-      }
-      requestAnimationFrame(() => {
-        document
-          .querySelector(".lease-table-card")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" })
-      })
-    },
-    [filters],
-  )
+  const availableSubmarkets = useMemo(() => {
+    const source = filters.propertyType
+      ? allRows.filter((r) => r.propertyType === filters.propertyType)
+      : allRows
+    return distinctSubmarkets(source)
+  }, [allRows, filters.propertyType])
 
   return (
     <>
-      <PageHeader onOpenMethodology={() => setMethodologyOpen(true)} />
+      <TopBar />
 
-      <main className="container">
-        <header className="page-header">
-          <h1 className="page-title">Portfolio intelligence</h1>
-          <p className="page-subtitle">
-            Benchmark every lease in your portfolio against current market rents. Override with your
-            own estimates where you have a stronger read.
-          </p>
-        </header>
+      <div className="container">
+        <PageHeader onOpenMethodology={() => setMethodologyOpen(true)} />
+
+        <div className="section-tabs">
+          <div className="section-tab active">
+            Portfolio
+            <span className="count">{allRows.length}</span>
+          </div>
+          <div className="section-tab" style={{ opacity: 0.5, cursor: "not-allowed" }}>
+            Market browser
+          </div>
+        </div>
 
         <FilterBar
           filters={filters}
           onChange={setFilters}
           availableSubmarkets={availableSubmarkets}
-          totalCount={allRows.length}
-          filteredCount={filteredRows.length}
+          propertyTypeCounts={propertyTypeCounts}
+          submarketCounts={submarketCounts}
         />
 
-        <HeadlineSummary agg={filteredAgg} filters={filters} />
+        <PortfolioKpis rows={filteredRows} agg={agg} />
 
-        <HeadlineChart rows={filteredRows} filters={filters} onSelectGroup={handleChartSelect} />
+        <PortfolioBreakdown rows={filteredRows} filters={filters} />
 
+        <div style={{ height: 16 }} />
         <LeaseTable rows={filteredRows} onSetEstimate={handleSetEstimate} />
 
-        <div className="page-bottom-spacer" />
-      </main>
+        <div style={{ height: 16 }} />
+        <MarketMap rows={filteredRows} />
+
+        <div style={{ height: 16 }} />
+        <TopVarianceLists rows={filteredRows} />
+
+        <div className="page-footer">
+          Per-lease broker estimates override our market data. Saved to your account.
+        </div>
+      </div>
 
       <MethodologyPanel
         open={methodologyOpen}
         onClose={() => setMethodologyOpen(false)}
         filters={filters}
-        agg={filteredAgg}
+        agg={agg}
       />
     </>
   )
