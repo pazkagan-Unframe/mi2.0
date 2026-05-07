@@ -329,6 +329,21 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-3);
 }
 .card-body { padding: 18px; }
+.card-body--scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-top: 0;
+  padding-bottom: 8px;
+}
+.card-body--scroll .sticky-row {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+  padding-top: 12px;
+  padding-bottom: 8px;
+  margin-bottom: 0;
+}
 .card-empty {
   padding: 48px 18px;
   text-align: center;
@@ -1082,37 +1097,32 @@ table.lease-table { width: 100%; border-collapse: collapse; }
 }
 .pulse-footer-action:hover { color: var(--accent-hover); }
 
-/* BREAKDOWN — expandable rows */
+/* BREAKDOWN — clickable rows that open the side panel */
 .ptype-row.expandable {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.12s ease;
+  position: relative;
 }
 .ptype-row.expandable:hover {
   background: var(--surface-2);
 }
-.ptype-row.expanded {
-  background: var(--surface-2);
-  border-bottom-color: transparent;
+.ptype-row.expandable:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
 }
-.ptype-caret {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  color: var(--text-3);
-  transition: transform 0.15s ease;
-  flex-shrink: 0;
+.ptype-row.expandable.selected {
+  background: var(--accent-bg);
 }
-.ptype-caret.open {
-  transform: rotate(90deg);
-}
-.ptype-children {
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-  padding: 4px 0 8px;
+.ptype-row.expandable.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px;
 }
 .ptype-child-row {
   display: grid;
@@ -1176,6 +1186,12 @@ table.lease-table { width: 100%; border-collapse: collapse; }
 
 /* Two breakdown widgets stacked or side by side */
 .row.split-50-50 { grid-template-columns: 1fr 1fr; }
+
+/* Panel body that hosts a list (no inner padding so child rows control it) */
+.panel-body--list { padding: 0; }
+.panel-body--list .ptype-child-row {
+  padding: 10px 14px;
+}
 
 /* COMP SCOPE POPOVER (lease table → market cell) */
 .market-cell {

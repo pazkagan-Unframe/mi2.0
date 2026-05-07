@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header"
 import { FilterBar } from "@/components/filter-bar"
 import { PortfolioPulse } from "@/components/portfolio-pulse"
 import { PortfolioBreakdown } from "@/components/portfolio-breakdown"
+import { BreakdownPanel, type BreakdownPanelData } from "@/components/breakdown-panel"
 import { LeaseTable } from "@/components/lease-table"
 import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
@@ -21,7 +22,7 @@ import {
   pulseStats,
   type Filters,
 } from "@/lib/calculations"
-import type { BrokerOverrides, PropertyType } from "@/lib/types"
+import type { BrokerOverrides, LeaseRow, PropertyType } from "@/lib/types"
 
 const STORAGE_KEY = "oneadvise:broker-overrides:v2"
 // In production this would come from auth — kept simple for the prototype.
@@ -34,6 +35,7 @@ export default function Page() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [overrides, setOverrides] = useState<BrokerOverrides>({})
   const [methodologyOpen, setMethodologyOpen] = useState(false)
+  const [breakdownPanel, setBreakdownPanel] = useState<BreakdownPanelData | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   // Hydrate broker overrides from localStorage on mount, scoped per broker.
@@ -145,6 +147,22 @@ export default function Page() {
     setFilters((f) => ({ ...f, confidence: "highmedium" }))
   }, [])
 
+  // Open the breakdown side panel for a given outer group.
+  const handleBreakdownSelect = useCallback(
+    (outerGroupBy: "propertyType" | "submarket", key: string, rows: LeaseRow[]) => {
+      // Close methodology if open; the two panels are mutually exclusive.
+      setMethodologyOpen(false)
+      setBreakdownPanel({ outerGroupBy, outerKey: key, rows })
+    },
+    [],
+  )
+  const handleBreakdownClose = useCallback(() => setBreakdownPanel(null), [])
+
+  // When filters change, clear any open panel — its data is now stale.
+  useEffect(() => {
+    setBreakdownPanel(null)
+  }, [filters])
+
   return (
     <>
       <TopBar />
@@ -177,9 +195,30 @@ export default function Page() {
         />
 
         <div className="row split-50-50">
-          <PortfolioBreakdown rows={filteredRows} groupBy="propertyType" />
-          <PortfolioBreakdown rows={filteredRows} groupBy="submarket" />
+          <PortfolioBreakdown
+            rows={filteredRows}
+            groupBy="propertyType"
+            onSelect={(key, rows) => handleBreakdownSelect("propertyType", key, rows)}
+            selectedKey={
+              breakdownPanel?.outerGroupBy === "propertyType"
+                ? breakdownPanel.outerKey
+                : null
+            }
+          />
+          <PortfolioBreakdown
+            rows={filteredRows}
+            groupBy="submarket"
+            onSelect={(key, rows) => handleBreakdownSelect("submarket", key, rows)}
+            selectedKey={
+              breakdownPanel?.outerGroupBy === "submarket"
+                ? breakdownPanel.outerKey
+                : null
+            }
+          />
         </div>
+
+        <div style={{ height: 16 }} />
+        <MarketMap rows={filteredRows} />
 
         <div style={{ height: 16 }} />
         <LeaseTable
@@ -188,9 +227,6 @@ export default function Page() {
           onSetManual={handleSetManual}
           onClearOverride={handleClearOverride}
         />
-
-        <div style={{ height: 16 }} />
-        <MarketMap rows={filteredRows} />
 
         <div style={{ height: 16 }} />
         <TopVarianceLists rows={filteredRows} />
@@ -206,6 +242,12 @@ export default function Page() {
         onClose={() => setMethodologyOpen(false)}
         filters={filters}
         agg={agg}
+      />
+
+      <BreakdownPanel
+        open={breakdownPanel !== null}
+        data={breakdownPanel}
+        onClose={handleBreakdownClose}
       />
     </>
   )

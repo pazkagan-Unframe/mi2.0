@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { groupAndAggregate, PROPERTY_TYPE_ORDER } from "@/lib/calculations"
 import { formatDollars, formatPsf } from "@/lib/format"
@@ -12,25 +12,34 @@ type Props = {
   groupBy: GroupBy
   /** Optional override for the card title. */
   title?: string
+  /**
+   * Called when a row is clicked to open the side panel with the inner
+   * breakdown. The parent receives the rows that fall under that group key
+   * so it can hand them to the panel.
+   */
+  onSelect: (key: string, rows: LeaseRow[]) => void
+  /** The currently-selected outer key, if a panel is open. */
+  selectedKey: string | null
 }
 
 /**
  * Cross-tabulating breakdown table.
  *
- * `groupBy` controls the outer grouping. Each outer row is expandable to reveal
- * the *other* dimension within it: by-property-type rows expand to show
- * sub-markets within that type, by-sub-market rows expand to show property
- * types within that sub-market.
- *
- * Multiple rows can be open at once so a broker can compare two segments
- * side by side while presenting.
+ * `groupBy` controls the outer grouping. Clicking a row no longer expands
+ * inline — instead it calls `onSelect`, and the parent opens a side panel
+ * showing the inner cross-tab. This keeps the page compact even when the
+ * portfolio spans many sub-markets.
  *
  * The widget is passive — it does not filter the page. Filters live solely in
  * the FilterBar.
  */
-export function PortfolioBreakdown({ rows, groupBy, title }: Props) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-
+export function PortfolioBreakdown({
+  rows,
+  groupBy,
+  title,
+  onSelect,
+  selectedKey,
+}: Props) {
   const outerGroups = useMemo(() => {
     const grouped = groupAndAggregate(rows, (r) =>
       groupBy === "propertyType" ? r.propertyType : r.submarket,
@@ -49,24 +58,18 @@ export function PortfolioBreakdown({ rows, groupBy, title }: Props) {
   const cardTitle =
     title ?? (groupBy === "propertyType" ? "By property type" : "By sub-market")
 
-  const innerKeyFn = (r: LeaseRow): string =>
-    groupBy === "propertyType" ? r.submarket : r.propertyType
-
-  const innerHeading = groupBy === "propertyType" ? "Sub-markets" : "Property types"
-
-  const toggle = (key: string) =>
-    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+  const innerLabel = groupBy === "propertyType" ? "sub-markets" : "property types"
 
   return (
     <section className="card">
       <header className="card-header">
         <div className="card-title">{cardTitle}</div>
         <div className="card-actions">
-          {rows.length} {rows.length === 1 ? "lease" : "leases"} · click to expand
+          {rows.length} {rows.length === 1 ? "lease" : "leases"} · click for {innerLabel}
         </div>
       </header>
-      <div className="card-body">
-        <div className="ptype-row header">
+      <div className="card-body card-body--scroll">
+        <div className="ptype-row header sticky-row">
           <div>{groupBy === "propertyType" ? "Type" : "Sub-market"}</div>
           <div className="ptype-count">Leases</div>
           <div>Below ← gap → Above</div>
@@ -81,138 +84,56 @@ export function PortfolioBreakdown({ rows, groupBy, title }: Props) {
             const ratio = gap != null ? Math.min(1, Math.abs(gap) / maxAbs) : 0
             const tone = gap == null ? "muted" : gap > 0 ? "danger" : "success"
             const annual = g.agg.totalGapAnnual
-            const isOpen = !!expanded[g.key]
-
-            const innerGroups = isOpen
-              ? groupAndAggregate(g.rows, innerKeyFn).sort(
-                  (a, b) =>
-                    Math.abs(b.agg.totalGapAnnual ?? 0) -
-                    Math.abs(a.agg.totalGapAnnual ?? 0),
-                )
-              : []
-
-            const innerMaxAbs = Math.max(
-              0.01,
-              ...innerGroups.map((ig) => Math.abs(ig.agg.weightedGapPsf ?? 0)),
-            )
+            const isSelected = selectedKey === g.key
 
             return (
-              <div key={g.key}>
-                <div
-                  className={`ptype-row expandable${isOpen ? " expanded" : ""}`}
-                  onClick={() => toggle(g.key)}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isOpen}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault()
-                      toggle(g.key)
-                    }
-                  }}
-                >
-                  <div className="ptype-name">
-                    <span className={`ptype-caret${isOpen ? " open" : ""}`} aria-hidden="true">
-                      ›
-                    </span>
-                    {g.key}
-                  </div>
-                  <div className="ptype-count">{g.agg.count}</div>
-                  <div className="ptype-bar" aria-hidden="true">
-                    <div className="marker" />
-                    {gap != null && gap < 0 && (
-                      <div
-                        className="below"
-                        style={{
-                          marginLeft: `${50 - ratio * 50}%`,
-                          width: `${ratio * 50}%`,
-                        }}
-                      />
-                    )}
-                    {gap != null && gap > 0 && (
-                      <div
-                        className="above"
-                        style={{
-                          marginLeft: "50%",
-                          width: `${ratio * 50}%`,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className={`ptype-gap ${tone}`}>
-                    {gap != null ? formatPsf(gap, { sign: true }) : "—"}
-                    {annual != null && (
-                      <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>
-                        {formatDollars(annual, { sign: true })}/yr
-                      </div>
-                    )}
-                  </div>
+              <div
+                key={g.key}
+                className={`ptype-row expandable${isSelected ? " selected" : ""}`}
+                onClick={() => onSelect(g.key, g.rows)}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onSelect(g.key, g.rows)
+                  }
+                }}
+              >
+                <div className="ptype-name">
+                  {g.key}
                 </div>
-
-                {isOpen && (
-                  <div className="ptype-children">
+                <div className="ptype-count">{g.agg.count}</div>
+                <div className="ptype-bar" aria-hidden="true">
+                  <div className="marker" />
+                  {gap != null && gap < 0 && (
                     <div
-                      className="ptype-child-row"
+                      className="below"
                       style={{
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        color: "var(--text-3)",
-                        fontWeight: 500,
-                        paddingTop: 4,
-                        paddingBottom: 4,
+                        marginLeft: `${50 - ratio * 50}%`,
+                        width: `${ratio * 50}%`,
                       }}
-                    >
-                      <div className="name">{innerHeading}</div>
-                      <div className="count">Leases</div>
-                      <div>Gap</div>
-                      <div className="gap">Annual $</div>
+                    />
+                  )}
+                  {gap != null && gap > 0 && (
+                    <div
+                      className="above"
+                      style={{
+                        marginLeft: "50%",
+                        width: `${ratio * 50}%`,
+                      }}
+                    />
+                  )}
+                </div>
+                <div className={`ptype-gap ${tone}`}>
+                  {gap != null ? formatPsf(gap, { sign: true }) : "—"}
+                  {annual != null && (
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>
+                      {formatDollars(annual, { sign: true })}/yr
                     </div>
-                    {innerGroups.map((ig) => {
-                      const igGap = ig.agg.weightedGapPsf
-                      const igRatio =
-                        igGap != null ? Math.min(1, Math.abs(igGap) / innerMaxAbs) : 0
-                      const igTone =
-                        igGap == null ? "muted" : igGap > 0 ? "danger" : "success"
-                      const igAnnual = ig.agg.totalGapAnnual
-                      return (
-                        <div className="ptype-child-row" key={`${g.key}:${ig.key}`}>
-                          <div className="name">{ig.key}</div>
-                          <div className="count">{ig.agg.count}</div>
-                          <div className="ptype-child-bar" aria-hidden="true">
-                            <div className="marker" />
-                            {igGap != null && igGap < 0 && (
-                              <div
-                                className="below"
-                                style={{
-                                  left: `${50 - igRatio * 50}%`,
-                                  width: `${igRatio * 50}%`,
-                                }}
-                              />
-                            )}
-                            {igGap != null && igGap > 0 && (
-                              <div
-                                className="above"
-                                style={{
-                                  left: "50%",
-                                  width: `${igRatio * 50}%`,
-                                }}
-                              />
-                            )}
-                          </div>
-                          <div className={`gap ${igTone}`}>
-                            {igGap != null ? formatPsf(igGap, { sign: true }) : "—"}
-                            {igAnnual != null && (
-                              <div className="gap-meta">
-                                {formatDollars(igAnnual, { sign: true })}/yr
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )
           })
