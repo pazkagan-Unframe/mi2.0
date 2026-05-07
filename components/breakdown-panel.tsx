@@ -7,30 +7,36 @@ import { formatDollars, formatPsf } from "@/lib/format"
 
 type GroupBy = "propertyType" | "submarket"
 
-export type BreakdownPanelData = {
+export type BreakdownPanelSelection = {
   /** The outer dimension we drilled IN from. */
   outerGroupBy: GroupBy
   /** The selected outer row's key (e.g. "Office" or "Midtown"). */
   outerKey: string
-  /** All rows that fall under that outer key (already filtered by the page filters). */
-  rows: LeaseRow[]
 }
 
 type Props = {
   open: boolean
-  data: BreakdownPanelData | null
+  selection: BreakdownPanelSelection | null
+  /** All currently filtered rows. The panel re-derives its scope on every render. */
+  allRows: LeaseRow[]
   onClose: () => void
+  onLeaseClick: (leaseId: string) => void
 }
 
 /**
  * Side panel that opens when a row in PortfolioBreakdown is clicked. It shows
  * the cross-tabulated inner breakdown for that selected row — sub-markets
- * within a property type, or property types within a sub-market.
- *
- * Replaces the previous inline expansion so the main page stays compact and
- * the deep detail has its own scrollable surface.
+ * within a property type, or property types within a sub-market — and below
+ * it the actual leases that drive those numbers. Clicking a lease opens the
+ * LeaseDetailPanel stacked above this one.
  */
-export function BreakdownPanel({ open, data, onClose }: Props) {
+export function BreakdownPanel({
+  open,
+  selection,
+  allRows,
+  onClose,
+  onLeaseClick,
+}: Props) {
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -44,22 +50,32 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
     }
   }, [open, onClose])
 
+  // Slice the current filtered rows down to the outer group on every render so
+  // the panel stays in sync with override/filter changes.
+  const rows = useMemo(() => {
+    if (!selection) return [] as LeaseRow[]
+    if (selection.outerGroupBy === "propertyType") {
+      return allRows.filter((r) => r.propertyType === selection.outerKey)
+    }
+    return allRows.filter((r) => r.submarket === selection.outerKey)
+  }, [allRows, selection])
+
   // Inner groupBy is the OPPOSITE dimension of the outer one.
   const innerGroupBy: GroupBy =
-    data?.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
+    selection?.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
 
   const innerHeading =
     innerGroupBy === "submarket" ? "Sub-markets" : "Property types"
 
   const innerGroups = useMemo(() => {
-    if (!data) return []
+    if (!selection) return []
     const keyFn = (r: LeaseRow): string =>
       innerGroupBy === "submarket" ? r.submarket : r.propertyType
-    return groupAndAggregate(data.rows, keyFn).sort(
+    return groupAndAggregate(rows, keyFn).sort(
       (a, b) =>
         Math.abs(b.agg.totalGapAnnual ?? 0) - Math.abs(a.agg.totalGapAnnual ?? 0),
     )
-  }, [data, innerGroupBy])
+  }, [rows, innerGroupBy, selection])
 
   const maxAbs = Math.max(
     0.01,
@@ -67,9 +83,9 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
   )
 
   // Headline numbers for the outer scope.
-  const outerCount = data?.rows.length ?? 0
-  const outerSf = data?.rows.reduce((s, r) => s + r.sf, 0) ?? 0
-  const outerBenchmarked = data?.rows.filter((r) => r.comparisonPsf != null) ?? []
+  const outerCount = rows.length
+  const outerSf = rows.reduce((s, r) => s + r.sf, 0)
+  const outerBenchmarked = rows.filter((r) => r.comparisonPsf != null)
   const outerBenchmarkedSf = outerBenchmarked.reduce((s, r) => s + r.sf, 0)
   const outerWeightedGapPsf =
     outerBenchmarkedSf > 0
@@ -83,8 +99,18 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
       ? outerBenchmarked.reduce((s, r) => s + (r.varianceAnnual ?? 0), 0)
       : null
 
+  // Leases sorted by absolute annual $ gap, descending.
+  const leasesSorted = useMemo(
+    () =>
+      [...rows].sort(
+        (a, b) =>
+          Math.abs(b.varianceAnnual ?? 0) - Math.abs(a.varianceAnnual ?? 0),
+      ),
+    [rows],
+  )
+
   const eyebrowText =
-    data?.outerGroupBy === "propertyType"
+    selection?.outerGroupBy === "propertyType"
       ? `${innerHeading} within property type`
       : `${innerHeading} within sub-market`
 
@@ -112,7 +138,7 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
         <header className="panel-header">
           <div className="panel-eyebrow">{eyebrowText}</div>
           <h2 id="breakdown-panel-title" className="panel-title">
-            {data?.outerKey ?? ""}
+            {selection?.outerKey ?? ""}
           </h2>
           <p className="panel-subtitle">
             {outerCount} {outerCount === 1 ? "lease" : "leases"} ·{" "}
@@ -140,6 +166,7 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
         </header>
 
         <div className="panel-body panel-body--list">
+          {/* Cross-tab — sub-markets within a property type, or vice versa. */}
           <div
             className="ptype-child-row"
             style={{
@@ -153,7 +180,7 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
               position: "sticky",
               top: 0,
               background: "var(--surface)",
-              zIndex: 1,
+              zIndex: 2,
             }}
           >
             <div className="name">{innerHeading}</div>
@@ -218,6 +245,77 @@ export function BreakdownPanel({ open, data, onClose }: Props) {
               </div>
             )
           })}
+
+          {/* Underlying leases. Click a lease → opens the lease detail panel
+              stacked above this one. */}
+          {leasesSorted.length > 0 && (
+            <>
+              <div className="panel-section-heading">
+                <span>
+                  Leases in this {selection?.outerGroupBy === "propertyType" ? "type" : "sub-market"}
+                </span>
+                <span className="ct">
+                  {leasesSorted.length}{" "}
+                  {leasesSorted.length === 1 ? "lease" : "leases"} · sorted by gap
+                </span>
+              </div>
+              {leasesSorted.map((lease) => {
+                const tone =
+                  lease.variancePsf == null
+                    ? "muted"
+                    : lease.variancePct != null && Math.abs(lease.variancePct) <= 0.05
+                      ? "muted"
+                      : lease.variancePsf > 0
+                        ? "danger"
+                        : "success"
+                const isOverridden =
+                  lease.comparisonSource === "broker" ||
+                  lease.comparisonSource === "scope-override"
+                return (
+                  <button
+                    key={lease.id}
+                    type="button"
+                    className="lease-list-row"
+                    onClick={() => onLeaseClick(lease.id)}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div className="name">
+                        {lease.address}
+                        {isOverridden && (
+                          <span
+                            className="broker-pill"
+                            style={{ marginLeft: 6, verticalAlign: "middle" }}
+                          >
+                            {lease.comparisonSource === "broker" ? "Broker" : "Alt scope"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="meta">
+                        {selection?.outerGroupBy === "propertyType"
+                          ? lease.submarket
+                          : lease.propertyType}{" "}
+                        · {lease.sf.toLocaleString("en-US")} SF · current{" "}
+                        {formatPsf(lease.currentRentPsf)} · market{" "}
+                        {formatPsf(lease.comparisonPsf)}
+                      </div>
+                    </div>
+                    <div className="right">
+                      <span className={`gap-num ${tone}`}>
+                        {lease.variancePsf != null
+                          ? formatPsf(lease.variancePsf, { sign: true })
+                          : "—"}
+                      </span>
+                      {lease.varianceAnnual != null && (
+                        <span className="gap-meta">
+                          {formatDollars(lease.varianceAnnual, { sign: true })}/yr
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </>
+          )}
         </div>
       </aside>
     </>

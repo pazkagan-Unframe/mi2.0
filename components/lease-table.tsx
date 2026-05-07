@@ -16,6 +16,7 @@ type Props = {
   onPickScope: (leaseId: string, scopeId: string) => void
   onSetManual: (leaseId: string, estimate: number) => void
   onClearOverride: (leaseId: string) => void
+  onLeaseClick?: (leaseId: string) => void
 }
 
 type SortKey =
@@ -39,6 +40,7 @@ export function LeaseTable({
   onPickScope,
   onSetManual,
   onClearOverride,
+  onLeaseClick,
 }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("variance")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
@@ -142,6 +144,16 @@ export function LeaseTable({
 
       <div style={{ overflowX: "auto" }}>
         <table className="lease-table">
+          <colgroup>
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "9%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "15%" }} />
+          </colgroup>
           <thead>
             <tr>
               <Th k="address" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
@@ -184,6 +196,7 @@ export function LeaseTable({
                   row={row}
                   onOpenPopover={openPopover}
                   popoverOpenForRowId={popover.open ? popover.row.id : null}
+                  onLeaseClick={onLeaseClick}
                 />
               ))
             )}
@@ -259,10 +272,12 @@ function LeaseRowView({
   row,
   onOpenPopover,
   popoverOpenForRowId,
+  onLeaseClick,
 }: {
   row: LeaseRow
   onOpenPopover: (row: LeaseRow, rect: DOMRect) => void
   popoverOpenForRowId: string | null
+  onLeaseClick?: (leaseId: string) => void
 }) {
   const months = monthsUntil(row.expiryDate)
 
@@ -279,8 +294,13 @@ function LeaseRowView({
     row.comparisonSource === "broker" || row.comparisonSource === "scope-override"
 
   const handleMarketClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
     onOpenPopover(row, rect)
+  }
+
+  const handleRowClick = () => {
+    if (onLeaseClick) onLeaseClick(row.id)
   }
 
   const popoverActive = popoverOpenForRowId === row.id
@@ -304,7 +324,11 @@ function LeaseRowView({
       : activeScope?.confidence ?? row.marketConfidence
 
   return (
-    <tr className={isOverridden ? "broker-row" : undefined}>
+    <tr
+      className={isOverridden ? "broker-row" : undefined}
+      onClick={onLeaseClick ? handleRowClick : undefined}
+      style={onLeaseClick ? { cursor: "pointer" } : undefined}
+    >
       <td>
         <div className="lease-name">{row.address}</div>
         <div className="lease-meta">

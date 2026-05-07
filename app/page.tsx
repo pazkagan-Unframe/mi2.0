@@ -6,8 +6,12 @@ import { PageHeader } from "@/components/page-header"
 import { FilterBar } from "@/components/filter-bar"
 import { PortfolioPulse } from "@/components/portfolio-pulse"
 import { PortfolioBreakdown } from "@/components/portfolio-breakdown"
-import { BreakdownPanel, type BreakdownPanelData } from "@/components/breakdown-panel"
+import {
+  BreakdownPanel,
+  type BreakdownPanelSelection,
+} from "@/components/breakdown-panel"
 import { LeaseTable } from "@/components/lease-table"
+import { LeaseDetailPanel } from "@/components/lease-detail-panel"
 import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
@@ -22,7 +26,7 @@ import {
   pulseStats,
   type Filters,
 } from "@/lib/calculations"
-import type { BrokerOverrides, LeaseRow, PropertyType } from "@/lib/types"
+import type { BrokerOverrides, PropertyType } from "@/lib/types"
 
 const STORAGE_KEY = "oneadvise:broker-overrides:v2"
 // In production this would come from auth — kept simple for the prototype.
@@ -35,7 +39,9 @@ export default function Page() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
   const [overrides, setOverrides] = useState<BrokerOverrides>({})
   const [methodologyOpen, setMethodologyOpen] = useState(false)
-  const [breakdownPanel, setBreakdownPanel] = useState<BreakdownPanelData | null>(null)
+  const [breakdownPanel, setBreakdownPanel] =
+    useState<BreakdownPanelSelection | null>(null)
+  const [leaseDetailId, setLeaseDetailId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   // Hydrate broker overrides from localStorage on mount, scoped per broker.
@@ -147,20 +153,34 @@ export default function Page() {
     setFilters((f) => ({ ...f, confidence: "highmedium" }))
   }, [])
 
-  // Open the breakdown side panel for a given outer group.
+  // Open the breakdown side panel for a given outer group. We only store the
+  // selection key; the panel re-derives its rows from the latest filteredRows
+  // so override changes are reflected live.
   const handleBreakdownSelect = useCallback(
-    (outerGroupBy: "propertyType" | "submarket", key: string, rows: LeaseRow[]) => {
-      // Close methodology if open; the two panels are mutually exclusive.
+    (outerGroupBy: "propertyType" | "submarket", key: string) => {
       setMethodologyOpen(false)
-      setBreakdownPanel({ outerGroupBy, outerKey: key, rows })
+      setBreakdownPanel({ outerGroupBy, outerKey: key })
     },
     [],
   )
   const handleBreakdownClose = useCallback(() => setBreakdownPanel(null), [])
 
-  // When filters change, clear any open panel — its data is now stale.
+  // Lease detail panel — stacks above breakdown panel, can also be opened
+  // from the top-variance lists or any lease row in the table.
+  const handleLeaseClick = useCallback((leaseId: string) => {
+    setLeaseDetailId(leaseId)
+  }, [])
+  const handleLeaseDetailClose = useCallback(() => setLeaseDetailId(null), [])
+
+  const detailRow = useMemo(
+    () => (leaseDetailId ? allRows.find((r) => r.id === leaseDetailId) ?? null : null),
+    [allRows, leaseDetailId],
+  )
+
+  // When filters change, close any open panels — their data may be out of scope.
   useEffect(() => {
     setBreakdownPanel(null)
+    setLeaseDetailId(null)
   }, [filters])
 
   return (
@@ -198,7 +218,7 @@ export default function Page() {
           <PortfolioBreakdown
             rows={filteredRows}
             groupBy="propertyType"
-            onSelect={(key, rows) => handleBreakdownSelect("propertyType", key, rows)}
+            onSelect={(key) => handleBreakdownSelect("propertyType", key)}
             selectedKey={
               breakdownPanel?.outerGroupBy === "propertyType"
                 ? breakdownPanel.outerKey
@@ -208,7 +228,7 @@ export default function Page() {
           <PortfolioBreakdown
             rows={filteredRows}
             groupBy="submarket"
-            onSelect={(key, rows) => handleBreakdownSelect("submarket", key, rows)}
+            onSelect={(key) => handleBreakdownSelect("submarket", key)}
             selectedKey={
               breakdownPanel?.outerGroupBy === "submarket"
                 ? breakdownPanel.outerKey
@@ -221,15 +241,16 @@ export default function Page() {
         <MarketMap rows={filteredRows} />
 
         <div style={{ height: 16 }} />
+        <TopVarianceLists rows={filteredRows} onLeaseClick={handleLeaseClick} />
+
+        <div style={{ height: 16 }} />
         <LeaseTable
           rows={filteredRows}
           onPickScope={handlePickScope}
           onSetManual={handleSetManual}
           onClearOverride={handleClearOverride}
+          onLeaseClick={handleLeaseClick}
         />
-
-        <div style={{ height: 16 }} />
-        <TopVarianceLists rows={filteredRows} />
 
         <div className="page-footer">
           Per-lease overrides — manual estimates or alternate comp scopes — replace
@@ -246,8 +267,18 @@ export default function Page() {
 
       <BreakdownPanel
         open={breakdownPanel !== null}
-        data={breakdownPanel}
+        selection={breakdownPanel}
+        allRows={filteredRows}
         onClose={handleBreakdownClose}
+        onLeaseClick={handleLeaseClick}
+      />
+
+      <LeaseDetailPanel
+        open={leaseDetailId !== null}
+        row={detailRow}
+        onClose={handleLeaseDetailClose}
+        onPickScope={handlePickScope}
+        onClearOverride={handleClearOverride}
       />
     </>
   )
