@@ -74,16 +74,17 @@ export function MethodologyPanel({ open, onClose, filters, agg }: Props) {
             <div className="panel-section-title">Source-of-truth rule</div>
             <p>
               For every lease we compare the current contractual rent against a single comparison
-              rent. A broker estimate, when present, overrides our market intelligence for that
-              lease. Aggregates respect the override per row.
+              rent. A broker override — either a manual estimate or a different comp scope —
+              replaces our system default for that lease. Aggregates respect the override per row.
             </p>
             <pre className="panel-formula">
-              comparison = brokerEstimate ?? marketRent{"\n"}
+              comparison = brokerOverride ?? defaultScope.rent{"\n"}
               variance = currentRent − comparison
             </pre>
             <p style={{ marginTop: 12 }}>
               Positive variance means the lease is paying above the comparison — unfavorable for
-              the tenant. Negative variance is favorable.
+              the tenant. Negative variance is favorable. A lease is &ldquo;at market&rdquo; when
+              variance is within ±5% of the comparison rent.
             </p>
           </section>
 
@@ -172,16 +173,16 @@ export function MethodologyPanel({ open, onClose, filters, agg }: Props) {
           </section>
 
           <section className="panel-section">
-            <div className="panel-section-title">Broker estimate workflow</div>
+            <div className="panel-section-title">Per-lease overrides</div>
             <p>
-              Type a $/SF figure into the broker column on any lease row to set your own
-              assessment. Estimates are saved per broker and persist across sessions. They flow
-              into all aggregates immediately and are tagged on every row that uses them.
+              Click any market $/SF cell in the lease table to see the comp scopes available for
+              that lease — the system picks the narrowest scope with at least 5 comps, but you can
+              switch to a wider scope, or type your own broker estimate.
             </p>
             <p>
-              In a client meeting, the broker estimate becomes the comparison rent for that lease;
-              the market figure remains visible as supporting context (struck through) so you can
-              answer &ldquo;what does the data say?&rdquo; if asked.
+              Either kind of override replaces the system default for that lease and flows into
+              every aggregate immediately. Overrides are saved per broker and persist across
+              sessions. Each affected row shows a label naming the source.
             </p>
           </section>
         </div>

@@ -1,41 +1,73 @@
-import type { BrokerOverrides, Lease, LeaseRow, PropertyType } from "./types"
+import type {
+  BrokerOverrides,
+  LeaseRow,
+  LeaseWithScopes,
+  PropertyType,
+} from "./types"
 import { monthsUntil } from "./format"
 
 /**
+ * Threshold (as a fraction of comparison rent) within which a lease is
+ * considered "at market" rather than above or below. ±5%.
+ */
+export const AT_MARKET_THRESHOLD = 0.05
+
+/**
  * Source-of-truth rule.
- * comparisonPsf = brokerEstimate ?? marketRent
+ * comparisonPsf = brokerOverride ?? defaultScope.rentPsf
  * variancePsf = currentRent − comparisonPsf
  * Positive variance = paying above market = unfavorable for tenant.
  */
-export function buildLeaseRow(lease: Lease, overrides: BrokerOverrides): LeaseRow {
+export function buildLeaseRow(
+  lease: LeaseWithScopes,
+  overrides: BrokerOverrides,
+): LeaseRow {
   const brokerOverride = overrides[lease.id] ?? null
-  const comparisonPsf =
-    brokerOverride?.estimatePsf != null
-      ? brokerOverride.estimatePsf
-      : lease.marketRentPsf
 
-  const comparisonSource: LeaseRow["comparisonSource"] =
-    brokerOverride?.estimatePsf != null
-      ? "broker"
-      : lease.marketRentPsf != null
-        ? "market"
-        : "none"
+  const defaultScope = lease.scopes.find((s) => s.id === lease.defaultScopeId) ?? null
+
+  let comparisonPsf: number | null
+  let comparisonSource: LeaseRow["comparisonSource"]
+  let comparisonLabel: string
+
+  if (brokerOverride) {
+    comparisonPsf = brokerOverride.estimatePsf
+    comparisonSource = brokerOverride.kind === "manual" ? "broker" : "scope-override"
+    comparisonLabel = brokerOverride.sourceLabel
+  } else if (defaultScope) {
+    comparisonPsf = defaultScope.rentPsf
+    comparisonSource = "market"
+    comparisonLabel = defaultScope.label
+  } else {
+    comparisonPsf = null
+    comparisonSource = "none"
+    comparisonLabel = "No comp set"
+  }
 
   const variancePsf =
     comparisonPsf != null ? lease.currentRentPsf - comparisonPsf : null
+  const variancePct =
+    variancePsf != null && comparisonPsf
+      ? variancePsf / comparisonPsf
+      : null
   const varianceAnnual = variancePsf != null ? variancePsf * lease.sf : null
 
   return {
     ...lease,
     comparisonPsf,
     comparisonSource,
+    comparisonLabel,
     variancePsf,
+    variancePct,
     varianceAnnual,
     brokerOverride,
   }
 }
 
-export function buildLeaseRows(leases: Lease[], overrides: BrokerOverrides): LeaseRow[] {
+export function buildLeaseRows(
+  leases: LeaseWithScopes[],
+  overrides: BrokerOverrides,
+): LeaseRow[] {
   return leases.map((l) => buildLeaseRow(l, overrides))
 }
 
@@ -65,10 +97,8 @@ export function applyFilters(rows: LeaseRow[], filters: Filters): LeaseRow[] {
       if (filters.expiryWindow === "gt36" && months < 36) return false
     }
     if (filters.confidence) {
-      // Filter applies to the source backing the comparison.
-      // Broker estimates are treated as "high" for filtering since the broker has affirmed them.
       const sourceConfidence =
-        r.comparisonSource === "broker"
+        r.comparisonSource === "broker" || r.comparisonSource === "scope-override"
           ? "high"
           : r.comparisonSource === "market"
             ? r.marketConfidence
@@ -83,6 +113,86 @@ export function applyFilters(rows: LeaseRow[], filters: Filters): LeaseRow[] {
     }
     return true
   })
+}
+
+/** Position of a single lease relative to its comparison rent (±5% = at market). */
+export type Position = "above" | "at" | "below" | "no-data"
+
+export function positionOf(row: LeaseRow): Position {
+  if (row.variancePct == null) return "no-data"
+  if (row.variancePct > AT_MARKET_THRESHOLD) return "above"
+  if (row.variancePct < -AT_MARKET_THRESHOLD) return "below"
+  return "at"
+}
+
+/** Counts and dollar impact bucketed by position. */
+export type PulseStats = {
+  totalCount: number
+  benchmarkedCount: number
+  aboveCount: number
+  atCount: number
+  belowCount: number
+  noDataCount: number
+  /** Sum of (current − comparison) × SF across above-market leases (positive). */
+  annualOpportunity: number
+  /** Sum of (comparison − current) × SF across below-market leases (positive). */
+  annualSavings: number
+  /** Net = annualOpportunity − annualSavings. Positive = paying more than market overall. */
+  netAnnual: number
+  /** Count of leases whose source is broker (manual or scope-override). */
+  brokerOverrideCount: number
+  /** Count of benchmarked leases backed by low-confidence comps. */
+  lowConfidenceCount: number
+}
+
+export function pulseStats(rows: LeaseRow[]): PulseStats {
+  let aboveCount = 0
+  let atCount = 0
+  let belowCount = 0
+  let noDataCount = 0
+  let benchmarkedCount = 0
+  let annualOpportunity = 0
+  let annualSavings = 0
+  let brokerOverrideCount = 0
+  let lowConfidenceCount = 0
+
+  for (const r of rows) {
+    if (r.comparisonSource === "broker" || r.comparisonSource === "scope-override") {
+      brokerOverrideCount += 1
+    }
+    const pos = positionOf(r)
+    if (pos === "no-data") {
+      noDataCount += 1
+      continue
+    }
+    benchmarkedCount += 1
+    if (pos === "above") {
+      aboveCount += 1
+      annualOpportunity += r.varianceAnnual ?? 0
+    } else if (pos === "below") {
+      belowCount += 1
+      annualSavings += -(r.varianceAnnual ?? 0)
+    } else {
+      atCount += 1
+    }
+    if (r.comparisonSource === "market" && r.marketConfidence === "low") {
+      lowConfidenceCount += 1
+    }
+  }
+
+  return {
+    totalCount: rows.length,
+    benchmarkedCount,
+    aboveCount,
+    atCount,
+    belowCount,
+    noDataCount,
+    annualOpportunity,
+    annualSavings,
+    netAnnual: annualOpportunity - annualSavings,
+    brokerOverrideCount,
+    lowConfidenceCount,
+  }
 }
 
 /** Aggregate stats for a set of rows. */
@@ -135,7 +245,9 @@ export function aggregate(rows: LeaseRow[]): Aggregate {
   return {
     count,
     benchmarkedCount: benchmarked.length,
-    brokerEstimateCount: rows.filter((r) => r.comparisonSource === "broker").length,
+    brokerEstimateCount: rows.filter(
+      (r) => r.comparisonSource === "broker" || r.comparisonSource === "scope-override",
+    ).length,
     totalSf,
     avgCurrentPsf,
     avgComparisonPsf,

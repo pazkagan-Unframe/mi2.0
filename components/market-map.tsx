@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { geoAlbersUsa, geoPath } from "d3-geo"
 import { feature } from "topojson-client"
 import type { LeaseRow } from "@/lib/types"
@@ -41,11 +41,27 @@ type TooltipState =
   | { open: true; x: number; y: number; data: SubmarketAggregate }
   | { open: false }
 
+type ViewBox = { x: number; y: number; w: number; h: number }
+
 const TOPO_URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"
+const BASE_WIDTH = 920
+const BASE_HEIGHT = 420
+const MIN_ZOOM = 1
+const MAX_ZOOM = 6
 
 export function MarketMap({ rows }: Props) {
   const [topology, setTopology] = useState<TopoLike | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState>({ open: false })
+
+  const initialView: ViewBox = { x: 0, y: 0, w: BASE_WIDTH, h: BASE_HEIGHT }
+  const [view, setView] = useState<ViewBox>(initialView)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const dragRef = useRef<{
+    startClientX: number
+    startClientY: number
+    startView: ViewBox
+  } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -54,9 +70,7 @@ export function MarketMap({ rows }: Props) {
       .then((data: TopoLike) => {
         if (!cancelled) setTopology(data)
       })
-      .catch(() => {
-        // Map will degrade gracefully to bubbles only.
-      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -91,14 +105,14 @@ export function MarketMap({ rows }: Props) {
         ? benchmarked.reduce((s, r) => s + (r.varianceAnnual ?? 0), 0)
         : null
 
-      // Average lng/lat across leases in the sub-market (close enough for plotting).
       const lng = list.reduce((s, r) => s + r.lng, 0) / list.length
       const lat = list.reduce((s, r) => s + r.lat, 0) / list.length
 
-      // Average confidence — pick worst of the rows (so high requires all-high).
       let avgConfidence: SubmarketAggregate["avgConfidence"] = "muted"
       const confs = benchmarked.map((r) =>
-        r.comparisonSource === "broker" ? "high" : r.marketConfidence,
+        r.comparisonSource === "broker" || r.comparisonSource === "scope-override"
+          ? "high"
+          : r.marketConfidence,
       )
       if (confs.length > 0) {
         if (confs.every((c) => c === "high")) avgConfidence = "high"
@@ -122,14 +136,11 @@ export function MarketMap({ rows }: Props) {
     return result
   }, [rows])
 
-  const width = 920
-  const height = 420
-
   const projection = useMemo(
     () =>
       geoAlbersUsa()
         .scale(1100)
-        .translate([width / 2, height / 2]),
+        .translate([BASE_WIDTH / 2, BASE_HEIGHT / 2]),
     [],
   )
 
@@ -137,8 +148,6 @@ export function MarketMap({ rows }: Props) {
 
   const stateFeatures = useMemo(() => {
     if (!topology) return null
-    // d3 feature() takes a topology and a geometry object; we pass through unknown to avoid
-    // depending on @types/topojson-specification.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fc = feature(topology as any, (topology.objects as any).states) as unknown as {
       features: StateFeature[]
@@ -146,7 +155,6 @@ export function MarketMap({ rows }: Props) {
     return fc.features
   }, [topology])
 
-  // Project sub-market coordinates and filter out any that fall outside the US.
   const points = useMemo(
     () =>
       aggregates
@@ -160,27 +168,129 @@ export function MarketMap({ rows }: Props) {
 
   const maxCount = Math.max(1, ...points.map((p) => p.agg.count))
 
+  // Current zoom level relative to base view (used to keep bubble sizes constant
+  // visually as the user zooms in).
+  const zoom = BASE_WIDTH / view.w
+
+  const clampView = (v: ViewBox): ViewBox => {
+    // Don't allow zooming out past the base view.
+    const w = Math.min(BASE_WIDTH, Math.max(BASE_WIDTH / MAX_ZOOM, v.w))
+    const h = Math.min(BASE_HEIGHT, Math.max(BASE_HEIGHT / MAX_ZOOM, v.h))
+    // Keep the view inside [0, BASE_WIDTH] × [0, BASE_HEIGHT].
+    const x = Math.min(Math.max(0, v.x), BASE_WIDTH - w)
+    const y = Math.min(Math.max(0, v.y), BASE_HEIGHT - h)
+    return { x, y, w, h }
+  }
+
+  const zoomBy = (factor: number, centerScreen?: { cx: number; cy: number }) => {
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    // Convert centerScreen (or the rect center) to viewBox coords.
+    const cx = centerScreen?.cx ?? rect.left + rect.width / 2
+    const cy = centerScreen?.cy ?? rect.top + rect.height / 2
+    const px = ((cx - rect.left) / rect.width) * view.w + view.x
+    const py = ((cy - rect.top) / rect.height) * view.h + view.y
+
+    const newW = view.w / factor
+    const newH = view.h / factor
+    // Keep (px,py) under the cursor.
+    const newX = px - ((cx - rect.left) / rect.width) * newW
+    const newY = py - ((cy - rect.top) / rect.height) * newH
+    setView(clampView({ x: newX, y: newY, w: newW, h: newH }))
+  }
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // Only left mouse / primary touch.
+    if (e.button !== 0 && e.pointerType === "mouse") return
+    const target = e.target as Element
+    // If clicking on a pin, don't start a drag.
+    if (target.closest("g.map-pin")) return
+    e.preventDefault()
+    ;(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId)
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startView: view,
+    }
+    setIsDragging(true)
+    setTooltip({ open: false })
+  }
+
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    // Convert pixel delta to viewBox delta.
+    const dxPx = e.clientX - drag.startClientX
+    const dyPx = e.clientY - drag.startClientY
+    const dxView = (dxPx / rect.width) * drag.startView.w
+    const dyView = (dyPx / rect.height) * drag.startView.h
+    setView(
+      clampView({
+        x: drag.startView.x - dxView,
+        y: drag.startView.y - dyView,
+        w: drag.startView.w,
+        h: drag.startView.h,
+      }),
+    )
+  }
+
+  const endDrag = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragRef.current) {
+      ;(e.currentTarget as SVGSVGElement).releasePointerCapture(e.pointerId)
+      dragRef.current = null
+      setIsDragging(false)
+    }
+  }
+
+  const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault()
+    const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2
+    zoomBy(factor, { cx: e.clientX, cy: e.clientY })
+  }
+
+  const reset = () => setView(initialView)
+
+  // Visual scale for bubbles: shrink as we zoom in so they don't engulf the map.
+  const bubbleScale = 1 / zoom
+
   return (
     <section className="card">
       <header className="card-header">
         <div className="card-title">Geographic distribution</div>
         <div className="card-actions">
-          <span>Bubble size = lease count · color = position vs market</span>
+          <span>Drag to pan · scroll to zoom · bubble size = lease count</span>
         </div>
       </header>
-      <div className="map-wrap">
+      <div className="map-wrap" style={{ position: "relative" }}>
         <svg
-          className="map-svg"
-          viewBox={`0 0 ${width} ${height}`}
+          ref={svgRef}
+          className={`map-svg${isDragging ? " dragging" : ""}`}
+          viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label="US map of sub-markets"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onWheel={onWheel}
         >
           {stateFeatures &&
             stateFeatures.map((f, i) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const d = path(f as any)
-              return d ? <path key={i} className="map-state" d={d} /> : null
+              return d ? (
+                <path
+                  key={i}
+                  className="map-state"
+                  d={d}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null
             })}
 
           {points.map(({ agg, x, y }) => {
@@ -200,13 +310,16 @@ export function MarketMap({ rows }: Props) {
                   : tone === "info"
                     ? "#185FA5"
                     : "#888780"
-            const r = 8 + (agg.count / maxCount) * 20
+            const baseR = 8 + (agg.count / maxCount) * 20
+            const r = baseR * bubbleScale
 
             return (
               <g
                 key={agg.key}
                 className="map-pin"
+                style={{ cursor: "pointer" }}
                 onMouseEnter={(e) =>
+                  !isDragging &&
                   setTooltip({
                     open: true,
                     x: e.clientX,
@@ -215,6 +328,7 @@ export function MarketMap({ rows }: Props) {
                   })
                 }
                 onMouseMove={(e) =>
+                  !isDragging &&
                   setTooltip({
                     open: true,
                     x: e.clientX,
@@ -231,15 +345,51 @@ export function MarketMap({ rows }: Props) {
                   fill={fill}
                   fillOpacity={0.85}
                   stroke="white"
-                  strokeWidth={1.5}
+                  strokeWidth={1.5 * bubbleScale}
                 />
-                <text x={x} y={y} className="map-pin-label">
+                <text
+                  x={x}
+                  y={y}
+                  className="map-pin-label"
+                  style={{ fontSize: `${12 * bubbleScale}px` }}
+                >
                   {agg.count}
                 </text>
               </g>
             )
           })}
         </svg>
+
+        <div className="map-controls" role="group" aria-label="Map controls">
+          <button
+            type="button"
+            onClick={() => zoomBy(1.5)}
+            disabled={zoom >= MAX_ZOOM - 0.01}
+            aria-label="Zoom in"
+            title="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / 1.5)}
+            disabled={zoom <= MIN_ZOOM + 0.01}
+            aria-label="Zoom out"
+            title="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={reset}
+            disabled={zoom <= MIN_ZOOM + 0.01 && view.x === 0 && view.y === 0}
+            aria-label="Reset view"
+            title="Reset view"
+            style={{ fontSize: 11 }}
+          >
+            ⟲
+          </button>
+        </div>
 
         <div className="map-legend">
           <div className="map-legend-item">
@@ -260,7 +410,7 @@ export function MarketMap({ rows }: Props) {
           </div>
         </div>
 
-        {tooltip.open && <Tooltip state={tooltip} />}
+        {tooltip.open && !isDragging && <Tooltip state={tooltip} />}
 
         {points.length === 0 && (
           <div
@@ -288,7 +438,6 @@ function Tooltip({
   state: { open: true; x: number; y: number; data: SubmarketAggregate }
 }) {
   const { x, y, data } = state
-  // Position above-right of the cursor, with viewport clamping.
   const offset = 16
   const tooltipWidth = 260
   const tooltipHeight = 180

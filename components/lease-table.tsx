@@ -9,10 +9,13 @@ import {
   formatPsf,
   monthsUntil,
 } from "@/lib/format"
+import { ScopePopover } from "./scope-popover"
 
 type Props = {
   rows: LeaseRow[]
-  onSetEstimate: (leaseId: string, estimate: number | null) => void
+  onPickScope: (leaseId: string, scopeId: string) => void
+  onSetManual: (leaseId: string, estimate: number) => void
+  onClearOverride: (leaseId: string) => void
 }
 
 type SortKey =
@@ -23,15 +26,24 @@ type SortKey =
   | "expiry"
   | "current"
   | "market"
-  | "broker"
   | "variance"
 
 type SortDir = "asc" | "desc"
 
-export function LeaseTable({ rows, onSetEstimate }: Props) {
+type PopoverState =
+  | { open: true; row: LeaseRow; rect: DOMRect }
+  | { open: false }
+
+export function LeaseTable({
+  rows,
+  onPickScope,
+  onSetManual,
+  onClearOverride,
+}: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("variance")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
   const [pageSize, setPageSize] = useState<10 | 25 | 100>(25)
+  const [popover, setPopover] = useState<PopoverState>({ open: false })
 
   const sorted = useMemo(() => {
     const copy = [...rows]
@@ -52,9 +64,7 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
           case "current":
             return r.currentRentPsf
           case "market":
-            return r.marketRentPsf
-          case "broker":
-            return r.brokerOverride?.estimatePsf ?? null
+            return r.comparisonPsf
           case "variance":
             return r.variancePsf
         }
@@ -83,12 +93,21 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
     }
   }
 
+  const openPopover = (row: LeaseRow, rect: DOMRect) =>
+    setPopover({ open: true, row, rect })
+  const closePopover = () => setPopover({ open: false })
+
+  // The popover's `row` prop must reflect the latest derived row (after overrides
+  // change), so look it up by id every render.
+  const popoverRow =
+    popover.open ? rows.find((r) => r.id === popover.row.id) ?? null : null
+
   return (
     <section className="card">
       <header className="card-header">
         <div className="card-title">Leases</div>
         <div className="card-actions">
-          Source of truth: broker estimate when present, market data otherwise
+          Click any market $/SF to switch comp scope or add a broker estimate
         </div>
       </header>
 
@@ -146,9 +165,6 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
               <Th right k="market" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
                 Market $/SF
               </Th>
-              <Th right k="broker" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
-                Broker $/SF
-              </Th>
               <Th right k="variance" sortKey={sortKey} sortDir={sortDir} setSort={setSort}>
                 Gap
               </Th>
@@ -157,13 +173,18 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
           <tbody>
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={9} className="card-empty">
+                <td colSpan={8} className="card-empty">
                   No leases match the current filters.
                 </td>
               </tr>
             ) : (
               visible.map((row) => (
-                <LeaseRowView key={row.id} row={row} onSetEstimate={onSetEstimate} />
+                <LeaseRowView
+                  key={row.id}
+                  row={row}
+                  onOpenPopover={openPopover}
+                  popoverOpenForRowId={popover.open ? popover.row.id : null}
+                />
               ))
             )}
           </tbody>
@@ -184,6 +205,17 @@ export function LeaseTable({ rows, onSetEstimate }: Props) {
             Show all
           </button>
         </div>
+      )}
+
+      {popover.open && popoverRow && (
+        <ScopePopover
+          row={popoverRow}
+          anchorRect={popover.rect}
+          onClose={closePopover}
+          onPickScope={(scopeId) => onPickScope(popoverRow.id, scopeId)}
+          onSetManual={(estimate) => onSetManual(popoverRow.id, estimate)}
+          onClearOverride={() => onClearOverride(popoverRow.id)}
+        />
       )}
     </section>
   )
@@ -225,29 +257,54 @@ function confidenceClass(c: Confidence | "muted"): string {
 
 function LeaseRowView({
   row,
-  onSetEstimate,
+  onOpenPopover,
+  popoverOpenForRowId,
 }: {
   row: LeaseRow
-  onSetEstimate: (leaseId: string, estimate: number | null) => void
+  onOpenPopover: (row: LeaseRow, rect: DOMRect) => void
+  popoverOpenForRowId: string | null
 }) {
   const months = monthsUntil(row.expiryDate)
 
   const tone =
     row.variancePsf == null
       ? "muted"
-      : row.variancePsf > 0.5
-        ? "danger"
-        : row.variancePsf < -0.5
-          ? "success"
-          : "muted"
+      : row.variancePct != null && Math.abs(row.variancePct) <= 0.05
+        ? "muted"
+        : row.variancePsf > 0
+          ? "danger"
+          : "success"
 
-  const variancePct =
-    row.variancePsf != null && row.comparisonPsf
-      ? row.variancePsf / row.comparisonPsf
-      : null
+  const isOverridden =
+    row.comparisonSource === "broker" || row.comparisonSource === "scope-override"
+
+  const handleMarketClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    onOpenPopover(row, rect)
+  }
+
+  const popoverActive = popoverOpenForRowId === row.id
+
+  // Description below the market $/SF cell — comp count + confidence at the
+  // currently selected scope, or the broker label if overridden.
+  const activeScope = row.scopes.find(
+    (s) =>
+      (row.brokerOverride?.kind === "scope" && s.id === row.brokerOverride.scopeId) ||
+      (!row.brokerOverride && s.id === row.defaultScopeId),
+  )
+  const compMeta =
+    row.comparisonSource === "broker"
+      ? "Broker estimate"
+      : activeScope
+        ? `${activeScope.compCount} ${activeScope.compCount === 1 ? "comp" : "comps"}`
+        : null
+  const compConfidence: Confidence =
+    row.comparisonSource === "broker"
+      ? "high"
+      : activeScope?.confidence ?? row.marketConfidence
 
   return (
-    <tr className={row.comparisonSource === "broker" ? "broker-row" : undefined}>
+    <tr className={isOverridden ? "broker-row" : undefined}>
       <td>
         <div className="lease-name">{row.address}</div>
         <div className="lease-meta">
@@ -258,7 +315,7 @@ function LeaseRowView({
       <td>
         <div className="scope-chip">
           <span className="scope-text">{row.submarket}</span>
-          <span className={`scope-conf ${confidenceClass(row.marketConfidence)}`}>
+          <span className="scope-conf muted">
             {row.city}, {row.state}
           </span>
         </div>
@@ -269,24 +326,38 @@ function LeaseRowView({
       </td>
       <td className="right mono">{formatPsf(row.currentRentPsf)}</td>
       <td className="right">
-        {row.marketRentPsf != null ? (
-          <div className="market-cell">
-            <span className={`num${row.comparisonSource === "broker" ? " overridden" : ""}`}>
-              {formatPsf(row.marketRentPsf)}
-            </span>
-            <span className="meta">
-              {row.marketCompCount} {row.marketCompCount === 1 ? "comp" : "comps"} ·{" "}
-              <span className={`scope-conf ${confidenceClass(row.marketConfidence)}`}>
-                {row.marketConfidence}
+        <button
+          type="button"
+          className={`market-cell-trigger${popoverActive ? " active" : ""}`}
+          onClick={handleMarketClick}
+        >
+          {row.comparisonPsf != null ? (
+            <>
+              <span className="market-cell-num" style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13 }}>
+                  {formatPsf(row.comparisonPsf)}
+                </span>
+                {isOverridden && <span className="broker-pill">Broker</span>}
               </span>
-            </span>
-          </div>
-        ) : (
-          <span style={{ color: "var(--text-3)", fontSize: 12 }}>No comp set</span>
-        )}
-      </td>
-      <td className="right">
-        <BrokerCell row={row} onSetEstimate={onSetEstimate} />
+              <span className="meta" style={{ fontSize: 11, color: "var(--text-3)" }}>
+                {compMeta}
+                {compMeta && (
+                  <>
+                    {" · "}
+                    <span className={`scope-conf ${confidenceClass(compConfidence)}`}>
+                      {compConfidence}
+                    </span>
+                  </>
+                )}
+              </span>
+              <span className="meta" style={{ fontSize: 10, color: "var(--text-3)" }}>
+                {row.comparisonLabel}
+              </span>
+            </>
+          ) : (
+            <span style={{ color: "var(--text-3)", fontSize: 12 }}>No comp set</span>
+          )}
+        </button>
       </td>
       <td className="right">
         {row.variancePsf != null ? (
@@ -295,7 +366,7 @@ function LeaseRowView({
               {formatPsf(row.variancePsf, { sign: true })}
             </span>
             <span className="gap-pct">
-              {variancePct != null && formatPercent(variancePct, { sign: true })} ·{" "}
+              {row.variancePct != null && formatPercent(row.variancePct, { sign: true })} ·{" "}
               {formatDollars(row.varianceAnnual, { sign: true })}/yr
             </span>
           </div>
@@ -304,80 +375,5 @@ function LeaseRowView({
         )}
       </td>
     </tr>
-  )
-}
-
-function BrokerCell({
-  row,
-  onSetEstimate,
-}: {
-  row: LeaseRow
-  onSetEstimate: (leaseId: string, estimate: number | null) => void
-}) {
-  const [draft, setDraft] = useState<string>(
-    row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "",
-  )
-  const [focused, setFocused] = useState(false)
-
-  // Keep the draft in sync if the row's saved value changes externally (e.g. clear).
-  // We avoid resetting while the input is focused so we don't fight a typing user.
-  if (
-    !focused &&
-    (row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "") !== draft &&
-    document.activeElement?.tagName !== "INPUT"
-  ) {
-    // no-op; this keeps the linter happy and keeps the controlled input simple
-  }
-
-  const commit = () => {
-    const trimmed = draft.trim()
-    if (trimmed === "") {
-      if (row.brokerOverride) onSetEstimate(row.id, null)
-      return
-    }
-    const parsed = Number.parseFloat(trimmed)
-    if (Number.isFinite(parsed) && parsed > 0) {
-      onSetEstimate(row.id, parsed)
-    }
-  }
-
-  const clear = () => {
-    setDraft("")
-    onSetEstimate(row.id, null)
-  }
-
-  return (
-    <div className="broker-input-wrap">
-      <input
-        type="number"
-        inputMode="decimal"
-        step="0.01"
-        min="0"
-        className={`broker-input${row.brokerOverride ? " has-value" : ""}`}
-        placeholder="Add"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => {
-          setFocused(false)
-          commit()
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur()
-          if (e.key === "Escape") {
-            setDraft(row.brokerOverride ? String(row.brokerOverride.estimatePsf) : "")
-            ;(e.target as HTMLInputElement).blur()
-          }
-        }}
-      />
-      {row.brokerOverride && (
-        <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-          <span className="broker-pill">Broker</span>
-          <button type="button" className="broker-clear" onClick={clear}>
-            clear
-          </button>
-        </span>
-      )}
-    </div>
   )
 }

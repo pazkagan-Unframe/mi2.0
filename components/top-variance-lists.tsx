@@ -66,10 +66,15 @@ function ListCard({
                   <div className="list-item-name">{r.address}</div>
                   <div className="list-item-meta">
                     {r.propertyType} · {r.submarket} · {r.sf.toLocaleString("en-US")} SF
-                    {r.comparisonSource === "broker" && (
+                    {(r.comparisonSource === "broker" ||
+                      r.comparisonSource === "scope-override") && (
                       <>
                         {" · "}
-                        <span style={{ color: "var(--accent)", fontWeight: 500 }}>broker estimate</span>
+                        <span style={{ color: "var(--accent)", fontWeight: 500 }}>
+                          {r.comparisonSource === "broker"
+                            ? "broker estimate"
+                            : "alternate scope"}
+                        </span>
                       </>
                     )}
                   </div>
