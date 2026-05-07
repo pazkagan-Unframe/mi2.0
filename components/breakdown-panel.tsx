@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { groupAndAggregate } from "@/lib/calculations"
 import { formatDollars, formatPsf } from "@/lib/format"
@@ -8,27 +8,23 @@ import { formatDollars, formatPsf } from "@/lib/format"
 type GroupBy = "propertyType" | "submarket"
 
 export type BreakdownPanelSelection = {
-  /** The outer dimension we drilled IN from. */
   outerGroupBy: GroupBy
-  /** The selected outer row's key (e.g. "Office" or "Midtown"). */
   outerKey: string
 }
 
 type Props = {
   open: boolean
   selection: BreakdownPanelSelection | null
-  /** All currently filtered rows. The panel re-derives its scope on every render. */
   allRows: LeaseRow[]
   onClose: () => void
   onLeaseClick: (leaseId: string) => void
 }
 
 /**
- * Side panel that opens when a row in PortfolioBreakdown is clicked. It shows
- * the cross-tabulated inner breakdown for that selected row — sub-markets
- * within a property type, or property types within a sub-market — and below
- * it the actual leases that drive those numbers. Clicking a lease opens the
- * LeaseDetailPanel stacked above this one.
+ * Side panel opened from a row in PortfolioBreakdown. Shows the cross-tab —
+ * sub-markets within a property type, or property types within a sub-market.
+ * Each cross-tab row is itself expandable to reveal the underlying leases
+ * inline. Clicking a lease opens the LeaseDetailPanel stacked above this one.
  */
 export function BreakdownPanel({
   open,
@@ -37,6 +33,8 @@ export function BreakdownPanel({
   onClose,
   onLeaseClick,
 }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -50,8 +48,21 @@ export function BreakdownPanel({
     }
   }, [open, onClose])
 
-  // Slice the current filtered rows down to the outer group on every render so
-  // the panel stays in sync with override/filter changes.
+  // Reset which inner rows are expanded whenever the panel selection changes.
+  useEffect(() => {
+    setExpanded(new Set())
+  }, [selection?.outerGroupBy, selection?.outerKey])
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  // Slice of the current filtered rows belonging to the outer scope.
   const rows = useMemo(() => {
     if (!selection) return [] as LeaseRow[]
     if (selection.outerGroupBy === "propertyType") {
@@ -60,7 +71,6 @@ export function BreakdownPanel({
     return allRows.filter((r) => r.submarket === selection.outerKey)
   }, [allRows, selection])
 
-  // Inner groupBy is the OPPOSITE dimension of the outer one.
   const innerGroupBy: GroupBy =
     selection?.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
 
@@ -98,16 +108,6 @@ export function BreakdownPanel({
     outerBenchmarked.length > 0
       ? outerBenchmarked.reduce((s, r) => s + (r.varianceAnnual ?? 0), 0)
       : null
-
-  // Leases sorted by absolute annual $ gap, descending.
-  const leasesSorted = useMemo(
-    () =>
-      [...rows].sort(
-        (a, b) =>
-          Math.abs(b.varianceAnnual ?? 0) - Math.abs(a.varianceAnnual ?? 0),
-      ),
-    [rows],
-  )
 
   const eyebrowText =
     selection?.outerGroupBy === "propertyType"
@@ -166,26 +166,12 @@ export function BreakdownPanel({
         </header>
 
         <div className="panel-body panel-body--list">
-          {/* Cross-tab — sub-markets within a property type, or vice versa. */}
-          <div
-            className="ptype-child-row"
-            style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              color: "var(--text-3)",
-              fontWeight: 500,
-              padding: "10px 14px",
-              borderBottom: "1px solid var(--border)",
-              position: "sticky",
-              top: 0,
-              background: "var(--surface)",
-              zIndex: 2,
-            }}
-          >
+          {/* Sticky column header */}
+          <div className="bp-row bp-row--header">
+            <div className="caret-cell" aria-hidden="true" />
             <div className="name">{innerHeading}</div>
             <div className="count">Leases</div>
-            <div>Below ← gap → Above</div>
+            <div className="bar-cell">Below ← gap → Above</div>
             <div className="gap">Annual $</div>
           </div>
 
@@ -202,120 +188,130 @@ export function BreakdownPanel({
             const igTone =
               igGap == null ? "muted" : igGap > 0 ? "danger" : "success"
             const igAnnual = ig.agg.totalGapAnnual
+            const isOpen = expanded.has(ig.key)
+            const groupLeases = rows
+              .filter((r) =>
+                innerGroupBy === "submarket"
+                  ? r.submarket === ig.key
+                  : r.propertyType === ig.key,
+              )
+              .sort(
+                (a, b) =>
+                  Math.abs(b.varianceAnnual ?? 0) - Math.abs(a.varianceAnnual ?? 0),
+              )
             return (
-              <div
-                className="ptype-child-row"
-                key={ig.key}
-                style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}
-              >
-                <div className="name" style={{ color: "var(--text)", fontWeight: 500 }}>
-                  {ig.key}
-                </div>
-                <div className="count">{ig.agg.count}</div>
-                <div className="ptype-child-bar" aria-hidden="true">
-                  <div className="marker" />
-                  {igGap != null && igGap < 0 && (
-                    <div
-                      className="below"
-                      style={{
-                        left: `${50 - igRatio * 50}%`,
-                        width: `${igRatio * 50}%`,
-                      }}
-                    />
-                  )}
-                  {igGap != null && igGap > 0 && (
-                    <div
-                      className="above"
-                      style={{
-                        marginLeft: "50%",
-                        left: "50%",
-                        width: `${igRatio * 50}%`,
-                      }}
-                    />
-                  )}
-                </div>
-                <div className={`gap ${igTone}`}>
-                  {igGap != null ? formatPsf(igGap, { sign: true }) : "—"}
-                  {igAnnual != null && (
-                    <div className="gap-meta">
-                      {formatDollars(igAnnual, { sign: true })}/yr
+              <div key={ig.key}>
+                <button
+                  type="button"
+                  className={`bp-row bp-row--group${isOpen ? " open" : ""}`}
+                  aria-expanded={isOpen}
+                  onClick={() => toggle(ig.key)}
+                >
+                  <div className="caret-cell" aria-hidden="true">
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      className={`bp-caret${isOpen ? " open" : ""}`}
+                    >
+                      <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <div className="name">{ig.key}</div>
+                  <div className="count">{ig.agg.count}</div>
+                  <div className="bar-cell">
+                    <div className="ptype-child-bar" aria-hidden="true">
+                      <div className="marker" />
+                      {igGap != null && igGap < 0 && (
+                        <div
+                          className="below"
+                          style={{
+                            left: `${50 - igRatio * 50}%`,
+                            width: `${igRatio * 50}%`,
+                          }}
+                        />
+                      )}
+                      {igGap != null && igGap > 0 && (
+                        <div
+                          className="above"
+                          style={{
+                            marginLeft: "50%",
+                            left: "50%",
+                            width: `${igRatio * 50}%`,
+                          }}
+                        />
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                  <div className={`gap ${igTone}`}>
+                    {igGap != null ? formatPsf(igGap, { sign: true }) : "—"}
+                    {igAnnual != null && (
+                      <div className="gap-meta">
+                        {formatDollars(igAnnual, { sign: true })}/yr
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="bp-leases">
+                    {groupLeases.length === 0 && (
+                      <div className="bp-leases-empty">No leases in this group.</div>
+                    )}
+                    {groupLeases.map((lease) => {
+                      const tone =
+                        lease.variancePsf == null
+                          ? "muted"
+                          : lease.variancePct != null && Math.abs(lease.variancePct) <= 0.05
+                            ? "muted"
+                            : lease.variancePsf > 0
+                              ? "danger"
+                              : "success"
+                      const isOverridden =
+                        lease.comparisonSource === "broker" ||
+                        lease.comparisonSource === "scope-override"
+                      return (
+                        <button
+                          key={lease.id}
+                          type="button"
+                          className="bp-lease"
+                          onClick={() => onLeaseClick(lease.id)}
+                        >
+                          <div className="bp-lease-main">
+                            <div className="bp-lease-name">
+                              {lease.address}
+                              {isOverridden && (
+                                <span className="broker-pill">
+                                  {lease.comparisonSource === "broker" ? "Broker" : "Alt scope"}
+                                </span>
+                              )}
+                            </div>
+                            <div className="bp-lease-meta">
+                              {lease.sf.toLocaleString("en-US")} SF · current{" "}
+                              {formatPsf(lease.currentRentPsf)} · market{" "}
+                              {formatPsf(lease.comparisonPsf)}
+                            </div>
+                          </div>
+                          <div className="bp-lease-right">
+                            <span className={`bp-lease-gap ${tone}`}>
+                              {lease.variancePsf != null
+                                ? formatPsf(lease.variancePsf, { sign: true })
+                                : "—"}
+                            </span>
+                            {lease.varianceAnnual != null && (
+                              <span className="bp-lease-annual">
+                                {formatDollars(lease.varianceAnnual, { sign: true })}/yr
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
-
-          {/* Underlying leases. Click a lease → opens the lease detail panel
-              stacked above this one. */}
-          {leasesSorted.length > 0 && (
-            <>
-              <div className="panel-section-heading">
-                <span>
-                  Leases in this {selection?.outerGroupBy === "propertyType" ? "type" : "sub-market"}
-                </span>
-                <span className="ct">
-                  {leasesSorted.length}{" "}
-                  {leasesSorted.length === 1 ? "lease" : "leases"} · sorted by gap
-                </span>
-              </div>
-              {leasesSorted.map((lease) => {
-                const tone =
-                  lease.variancePsf == null
-                    ? "muted"
-                    : lease.variancePct != null && Math.abs(lease.variancePct) <= 0.05
-                      ? "muted"
-                      : lease.variancePsf > 0
-                        ? "danger"
-                        : "success"
-                const isOverridden =
-                  lease.comparisonSource === "broker" ||
-                  lease.comparisonSource === "scope-override"
-                return (
-                  <button
-                    key={lease.id}
-                    type="button"
-                    className="lease-list-row"
-                    onClick={() => onLeaseClick(lease.id)}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div className="name">
-                        {lease.address}
-                        {isOverridden && (
-                          <span
-                            className="broker-pill"
-                            style={{ marginLeft: 6, verticalAlign: "middle" }}
-                          >
-                            {lease.comparisonSource === "broker" ? "Broker" : "Alt scope"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="meta">
-                        {selection?.outerGroupBy === "propertyType"
-                          ? lease.submarket
-                          : lease.propertyType}{" "}
-                        · {lease.sf.toLocaleString("en-US")} SF · current{" "}
-                        {formatPsf(lease.currentRentPsf)} · market{" "}
-                        {formatPsf(lease.comparisonPsf)}
-                      </div>
-                    </div>
-                    <div className="right">
-                      <span className={`gap-num ${tone}`}>
-                        {lease.variancePsf != null
-                          ? formatPsf(lease.variancePsf, { sign: true })
-                          : "—"}
-                      </span>
-                      {lease.varianceAnnual != null && (
-                        <span className="gap-meta">
-                          {formatDollars(lease.varianceAnnual, { sign: true })}/yr
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </>
-          )}
         </div>
       </aside>
     </>
