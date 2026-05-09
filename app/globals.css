@@ -1614,11 +1614,11 @@ button.list-item.clickable:last-child { border-bottom: none; }
 .scope-popover-overlay {
   position: fixed;
   inset: 0;
-  z-index: 90;
-}
+  z-index: 200;
+  }
 .scope-popover {
   position: fixed;
-  z-index: 100;
+  z-index: 201;
   width: 360px;
   background: var(--surface);
   border: 1px solid var(--border);
