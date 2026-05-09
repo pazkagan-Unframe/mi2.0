@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { groupAndAggregate } from "@/lib/calculations"
-import { formatDollars, formatPsf } from "@/lib/format"
+import { formatDollars, formatExpiry, formatPsf } from "@/lib/format"
 import { bucketKeyOf, type Granularity } from "@/lib/timeline"
+import { ScopePopover } from "./scope-popover"
 
 type GroupBy = "propertyType" | "submarket"
 
@@ -23,18 +24,26 @@ type Props = {
   allRows: LeaseRow[]
   onClose: () => void
   onLeaseClick: (leaseId: string) => void
+  onPickScope: (leaseId: string, scopeId: string) => void
+  onSetManual: (leaseId: string, estimate: number) => void
+  onPickSystemErv: (leaseId: string) => void
+  onClearOverride: (leaseId: string) => void
 }
+
+type PopoverState =
+  | { open: true; leaseId: string; rect: DOMRect }
+  | { open: false }
 
 /**
  * Side panel shared by two flows:
- * 1. "group" — opened from PortfolioBreakdown. Cross-tab of the *other* dimension
- *    (sub-markets within a property type, or property types within a sub-market).
- * 2. "period" — opened from RenewalTimeline. Cross-tab of sub-markets (default)
- *    or property types within all leases expiring in the chosen period; the
- *    user can toggle the inner dimension.
+ * 1. "group"  — opened from PortfolioBreakdown.
+ * 2. "period" — opened from RenewalTimeline.
  *
- * In both cases each cross-tab row is expandable to reveal its underlying leases
- * inline. Clicking a lease opens the LeaseDetailPanel stacked above this one.
+ * Both render a cross-tab of the *other* dimension, with each row expandable to
+ * reveal the underlying leases in an explicit four-column layout
+ * [Lease | Current | Market+source | Gap]. Clicking the Market cell on a lease
+ * row opens an inline scope/ERV popover (same surface as the lease table).
+ * Clicking elsewhere on the row opens the LeaseDetailPanel.
  */
 export function BreakdownPanel({
   open,
@@ -42,14 +51,25 @@ export function BreakdownPanel({
   allRows,
   onClose,
   onLeaseClick,
+  onPickScope,
+  onSetManual,
+  onPickSystemErv,
+  onClearOverride,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [periodInner, setPeriodInner] = useState<GroupBy>("submarket")
+  const [popover, setPopover] = useState<PopoverState>({ open: false })
 
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
+      if (e.key === "Escape") {
+        if (popover.open) {
+          setPopover({ open: false })
+          return
+        }
+        onClose()
+      }
     }
     document.addEventListener("keydown", handler)
     document.body.style.overflow = "hidden"
@@ -57,12 +77,13 @@ export function BreakdownPanel({
       document.removeEventListener("keydown", handler)
       document.body.style.overflow = ""
     }
-  }, [open, onClose])
+  }, [open, onClose, popover.open])
 
-  // Reset which inner rows are expanded whenever the panel selection changes.
+  // Reset expanded rows / inner toggle / popover whenever the panel selection changes.
   useEffect(() => {
     setExpanded(new Set())
     setPeriodInner("submarket")
+    setPopover({ open: false })
   }, [selection])
 
   const toggle = (key: string) => {
@@ -74,7 +95,7 @@ export function BreakdownPanel({
     })
   }
 
-  // Subset of the current filtered rows belonging to the selected scope.
+  // Subset of rows belonging to the selected scope.
   const rows = useMemo(() => {
     if (!selection) return [] as LeaseRow[]
     if (selection.kind === "group") {
@@ -83,7 +104,6 @@ export function BreakdownPanel({
       }
       return allRows.filter((r) => r.submarket === selection.outerKey)
     }
-    // period
     return allRows.filter(
       (r) => bucketKeyOf(r.expiryDate, selection.granularity) === selection.bucketKey,
     )
@@ -132,7 +152,7 @@ export function BreakdownPanel({
       ? outerBenchmarked.reduce((s, r) => s + (r.varianceAnnual ?? 0), 0)
       : null
 
-  // Period view also breaks the dollar number into opportunity vs at-risk.
+  // Period view also splits the dollar number into opportunity vs at-risk.
   const periodOpportunity =
     selection?.kind === "period"
       ? rows.reduce((s, r) => s + Math.max(0, r.varianceAnnual ?? 0), 0)
@@ -164,6 +184,14 @@ export function BreakdownPanel({
       : outerWeightedGapPsf > 0
         ? "danger"
         : "success"
+
+  // The popover's row prop must reflect the *latest* derived row (so that
+  // override changes drive its UI). Look up by id every render.
+  const popoverRow = popover.open
+    ? allRows.find((r) => r.id === popover.leaseId) ?? null
+    : null
+
+  const closePopover = () => setPopover({ open: false })
 
   return (
     <>
@@ -260,7 +288,7 @@ export function BreakdownPanel({
         </header>
 
         <div className="panel-body panel-body--list">
-          {/* Sticky column header */}
+          {/* Sticky cross-tab header */}
           <div className="bp-row bp-row--header">
             <div className="caret-cell" aria-hidden="true" />
             <div className="name">{innerHeading}</div>
@@ -349,58 +377,28 @@ export function BreakdownPanel({
 
                 {isOpen && (
                   <div className="bp-leases">
+                    <div className="bp-lease bp-lease--header">
+                      <div className="bp-lease-info">Lease</div>
+                      <div className="bp-lease-current">Current</div>
+                      <div className="bp-lease-market">Market</div>
+                      <div className="bp-lease-gap-cell">Gap</div>
+                    </div>
                     {groupLeases.length === 0 && (
                       <div className="bp-leases-empty">No leases in this group.</div>
                     )}
-                    {groupLeases.map((lease) => {
-                      const tone =
-                        lease.variancePsf == null
-                          ? "muted"
-                          : lease.variancePct != null && Math.abs(lease.variancePct) <= 0.05
-                            ? "muted"
-                            : lease.variancePsf > 0
-                              ? "danger"
-                              : "success"
-                      const isOverridden =
-                        lease.comparisonSource === "broker" ||
-                        lease.comparisonSource === "scope-override"
-                      return (
-                        <button
-                          key={lease.id}
-                          type="button"
-                          className="bp-lease"
-                          onClick={() => onLeaseClick(lease.id)}
-                        >
-                          <div className="bp-lease-main">
-                            <div className="bp-lease-name">
-                              {lease.address}
-                              {isOverridden && (
-                                <span className="broker-pill">
-                                  {lease.comparisonSource === "broker" ? "Broker" : "Alt scope"}
-                                </span>
-                              )}
-                            </div>
-                            <div className="bp-lease-meta">
-                              {lease.sf.toLocaleString("en-US")} SF · current{" "}
-                              {formatPsf(lease.currentRentPsf)} · market{" "}
-                              {formatPsf(lease.comparisonPsf)}
-                            </div>
-                          </div>
-                          <div className="bp-lease-right">
-                            <span className={`bp-lease-gap ${tone}`}>
-                              {lease.variancePsf != null
-                                ? formatPsf(lease.variancePsf, { sign: true })
-                                : "—"}
-                            </span>
-                            {lease.varianceAnnual != null && (
-                              <span className="bp-lease-annual">
-                                {formatDollars(lease.varianceAnnual, { sign: true })}/yr
-                              </span>
-                            )}
-                          </div>
-                        </button>
-                      )
-                    })}
+                    {groupLeases.map((lease) => (
+                      <BpLeaseRow
+                        key={lease.id}
+                        lease={lease}
+                        popoverActive={
+                          popover.open && popover.leaseId === lease.id
+                        }
+                        onLeaseClick={() => onLeaseClick(lease.id)}
+                        onMarketClick={(rect) =>
+                          setPopover({ open: true, leaseId: lease.id, rect })
+                        }
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -408,6 +406,149 @@ export function BreakdownPanel({
           })}
         </div>
       </aside>
+
+      {popover.open && popoverRow && (
+        <ScopePopover
+          row={popoverRow}
+          anchorRect={popover.rect}
+          onClose={closePopover}
+          onPickScope={(scopeId) => onPickScope(popoverRow.id, scopeId)}
+          onSetManual={(estimate) => onSetManual(popoverRow.id, estimate)}
+          onPickSystemErv={() => onPickSystemErv(popoverRow.id)}
+          onClearOverride={() => onClearOverride(popoverRow.id)}
+        />
+      )}
     </>
+  )
+}
+
+function BpLeaseRow({
+  lease,
+  popoverActive,
+  onLeaseClick,
+  onMarketClick,
+}: {
+  lease: LeaseRow
+  popoverActive: boolean
+  onLeaseClick: () => void
+  onMarketClick: (rect: DOMRect) => void
+}) {
+  const tone =
+    lease.variancePsf == null
+      ? "muted"
+      : lease.variancePct != null && Math.abs(lease.variancePct) <= 0.05
+        ? "muted"
+        : lease.variancePsf > 0
+          ? "danger"
+          : "success"
+
+  const isOverridden =
+    lease.comparisonSource === "broker" ||
+    lease.comparisonSource === "scope-override" ||
+    lease.comparisonSource === "erv-system"
+
+  const overridePillLabel =
+    lease.comparisonSource === "broker"
+      ? "Your ERV"
+      : lease.comparisonSource === "erv-system"
+        ? "ERV"
+        : "Alt scope"
+
+  // Sub-line under the market price: scope label + comp meta, or ERV label.
+  const activeScope = lease.scopes.find(
+    (s) =>
+      (lease.brokerOverride?.kind === "scope" &&
+        s.id === lease.brokerOverride.scopeId) ||
+      (!lease.brokerOverride && s.id === lease.defaultScopeId),
+  )
+  const marketLine1 =
+    lease.comparisonSource === "broker"
+      ? "Your ERV"
+      : lease.comparisonSource === "erv-system"
+        ? "External ERV"
+        : activeScope?.label ?? lease.comparisonLabel
+  const marketLine2 =
+    lease.comparisonSource === "broker"
+      ? "Manual estimate"
+      : lease.comparisonSource === "erv-system"
+        ? "Market intelligence"
+        : activeScope
+          ? `${activeScope.compCount} comps · ${activeScope.confidence}`
+          : null
+
+  const handleRowClick = () => onLeaseClick()
+  const handleRowKey = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      onLeaseClick()
+    }
+  }
+  const handleMarketClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    onMarketClick(e.currentTarget.getBoundingClientRect())
+  }
+
+  return (
+    <div
+      className="bp-lease"
+      role="button"
+      tabIndex={0}
+      onClick={handleRowClick}
+      onKeyDown={handleRowKey}
+    >
+      <div className="bp-lease-info">
+        <div className="bp-lease-name">
+          <span className="bp-lease-address">{lease.address}</span>
+          {isOverridden && (
+            <span className="broker-pill">{overridePillLabel}</span>
+          )}
+        </div>
+        <div className="bp-lease-meta">
+          {lease.sf.toLocaleString("en-US")} SF · {lease.tenant} · expires{" "}
+          {formatExpiry(lease.expiryDate)}
+        </div>
+      </div>
+
+      <div className="bp-lease-current">
+        <div className="bp-cell-num">{formatPsf(lease.currentRentPsf)}</div>
+        <div className="bp-cell-meta">/SF</div>
+      </div>
+
+      <button
+        type="button"
+        className={`bp-lease-market${popoverActive ? " active" : ""}`}
+        onClick={handleMarketClick}
+        aria-label="Change comp scope or set ERV"
+      >
+        {lease.comparisonPsf != null ? (
+          <>
+            <div className="bp-cell-num">{formatPsf(lease.comparisonPsf)}</div>
+            <div className="bp-cell-meta">{marketLine1}</div>
+            {marketLine2 && (
+              <div className="bp-cell-meta muted">{marketLine2}</div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="bp-cell-num muted">—</div>
+            <div className="bp-cell-meta muted">No comp set</div>
+          </>
+        )}
+      </button>
+
+      <div className="bp-lease-gap-cell">
+        <div className={`bp-cell-num ${tone}`}>
+          {lease.variancePsf != null
+            ? formatPsf(lease.variancePsf, { sign: true })
+            : "—"}
+        </div>
+        {lease.varianceAnnual != null && (
+          <div className="bp-cell-meta">
+            {formatDollars(lease.varianceAnnual, { sign: true })}/yr
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

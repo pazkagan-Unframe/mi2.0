@@ -32,7 +32,12 @@ export function buildLeaseRow(
 
   if (brokerOverride) {
     comparisonPsf = brokerOverride.estimatePsf
-    comparisonSource = brokerOverride.kind === "manual" ? "broker" : "scope-override"
+    comparisonSource =
+      brokerOverride.kind === "manual"
+        ? "broker"
+        : brokerOverride.kind === "system-erv"
+          ? "erv-system"
+          : "scope-override"
     comparisonLabel = brokerOverride.sourceLabel
   } else if (defaultScope) {
     comparisonPsf = defaultScope.rentPsf
@@ -98,7 +103,9 @@ export function applyFilters(rows: LeaseRow[], filters: Filters): LeaseRow[] {
     }
     if (filters.confidence) {
       const sourceConfidence =
-        r.comparisonSource === "broker" || r.comparisonSource === "scope-override"
+        r.comparisonSource === "broker" ||
+        r.comparisonSource === "scope-override" ||
+        r.comparisonSource === "erv-system"
           ? "high"
           : r.comparisonSource === "market"
             ? r.marketConfidence
@@ -157,7 +164,11 @@ export function pulseStats(rows: LeaseRow[]): PulseStats {
   let lowConfidenceCount = 0
 
   for (const r of rows) {
-    if (r.comparisonSource === "broker" || r.comparisonSource === "scope-override") {
+    if (
+      r.comparisonSource === "broker" ||
+      r.comparisonSource === "scope-override" ||
+      r.comparisonSource === "erv-system"
+    ) {
       brokerOverrideCount += 1
     }
     const pos = positionOf(r)
@@ -246,7 +257,10 @@ export function aggregate(rows: LeaseRow[]): Aggregate {
     count,
     benchmarkedCount: benchmarked.length,
     brokerEstimateCount: rows.filter(
-      (r) => r.comparisonSource === "broker" || r.comparisonSource === "scope-override",
+      (r) =>
+        r.comparisonSource === "broker" ||
+        r.comparisonSource === "scope-override" ||
+        r.comparisonSource === "erv-system",
     ).length,
     totalSf,
     avgCurrentPsf,

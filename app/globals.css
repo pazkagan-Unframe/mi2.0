@@ -1312,7 +1312,9 @@ table.lease-table {
 .bp-caret { transition: transform 0.15s ease; }
 .bp-caret.open { transform: rotate(90deg); }
 
-/* Inline lease list under an expanded group row */
+/* Inline lease list under an expanded group row.
+   Four columns: lease info | current $/SF | market $/SF + scope | gap.
+   Market column is its own button — clicking opens the scope/ERV popover. */
 .bp-leases {
   background: var(--surface-2);
   border-bottom: 1px solid var(--border);
@@ -1320,11 +1322,11 @@ table.lease-table {
 }
 .bp-lease {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1.4fr) 70px minmax(0, 1.5fr) 96px;
+  gap: 10px;
+  align-items: start;
   width: 100%;
-  padding: 10px 14px 10px 38px;
+  padding: 10px 12px 10px 32px;
   background: none;
   border: none;
   border-bottom: 1px solid var(--border);
@@ -1340,7 +1342,28 @@ table.lease-table {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-.bp-lease-main { min-width: 0; }
+.bp-lease.bp-lease--header {
+  cursor: default;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.bp-lease.bp-lease--header:hover { background: var(--surface); }
+.bp-lease.bp-lease--header > div {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bp-lease.bp-lease--header .bp-lease-current,
+.bp-lease.bp-lease--header .bp-lease-market,
+.bp-lease.bp-lease--header .bp-lease-gap-cell {
+  text-align: right;
+}
+
+.bp-lease-info { min-width: 0; }
 .bp-lease-name {
   font-size: 12px;
   font-weight: 500;
@@ -1348,39 +1371,86 @@ table.lease-table {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+.bp-lease-address {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 .bp-lease-meta {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-3);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bp-lease-right {
+
+.bp-lease-current,
+.bp-lease-gap-cell {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 2px;
+  gap: 1px;
+  text-align: right;
 }
-.bp-lease-gap {
+
+.bp-lease-market {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+  min-width: 0;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+.bp-lease-market:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.bp-lease-market.active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+}
+.bp-lease-market:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bp-cell-num {
   font-family: var(--font-mono);
   font-feature-settings: 'tnum';
   font-weight: 600;
-  font-size: 12px;
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.2;
 }
-.bp-lease-gap.danger { color: var(--danger); }
-.bp-lease-gap.success { color: var(--success); }
-.bp-lease-gap.muted { color: var(--text-3); font-weight: 400; }
-.bp-lease-annual {
+.bp-cell-num.muted { color: var(--text-3); font-weight: 400; }
+.bp-cell-num.danger { color: var(--danger); }
+.bp-cell-num.success { color: var(--success); }
+
+.bp-cell-meta {
   font-size: 10px;
-  color: var(--text-3);
-  font-family: var(--font-mono);
-  font-feature-settings: 'tnum';
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.bp-cell-meta.muted { color: var(--text-3); }
+
 .bp-leases-empty {
   padding: 16px;
   text-align: center;

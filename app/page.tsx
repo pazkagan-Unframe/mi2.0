@@ -107,10 +107,26 @@ export default function Page() {
       [leaseId]: {
         estimatePsf: estimate,
         kind: "manual",
-        sourceLabel: "Broker estimate",
+        sourceLabel: "Your ERV",
         updatedAt: new Date().toISOString(),
       },
     }))
+  }, [])
+
+  const handlePickSystemErv = useCallback((leaseId: string) => {
+    setOverrides((prev) => {
+      const lease = PORTFOLIO.find((l) => l.id === leaseId)
+      if (!lease || lease.systemErvPsf == null) return prev
+      return {
+        ...prev,
+        [leaseId]: {
+          estimatePsf: lease.systemErvPsf,
+          kind: "system-erv",
+          sourceLabel: "External ERV",
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    })
   }, [])
 
   const handleClearOverride = useCallback((leaseId: string) => {
@@ -271,6 +287,7 @@ export default function Page() {
           rows={filteredRows}
           onPickScope={handlePickScope}
           onSetManual={handleSetManual}
+          onPickSystemErv={handlePickSystemErv}
           onClearOverride={handleClearOverride}
           onLeaseClick={handleLeaseClick}
         />
@@ -294,6 +311,10 @@ export default function Page() {
         allRows={filteredRows}
         onClose={handleBreakdownClose}
         onLeaseClick={handleLeaseClick}
+        onPickScope={handlePickScope}
+        onSetManual={handleSetManual}
+        onPickSystemErv={handlePickSystemErv}
+        onClearOverride={handleClearOverride}
       />
 
       <LeaseDetailPanel
@@ -301,6 +322,7 @@ export default function Page() {
         row={detailRow}
         onClose={handleLeaseDetailClose}
         onPickScope={handlePickScope}
+        onPickSystemErv={handlePickSystemErv}
         onClearOverride={handleClearOverride}
       />
     </>

@@ -12,6 +12,7 @@ type Props = {
   onPickScope: (scopeId: string) => void
   onClearOverride: () => void
   onSetManual: (estimate: number) => void
+  onPickSystemErv: () => void
 }
 
 /**
@@ -26,6 +27,7 @@ export function ScopePopover({
   onPickScope,
   onClearOverride,
   onSetManual,
+  onPickSystemErv,
 }: Props) {
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   const popRef = useRef<HTMLDivElement>(null)
@@ -70,8 +72,12 @@ export function ScopePopover({
   const selectedScopeId =
     row.brokerOverride?.kind === "scope"
       ? row.brokerOverride.scopeId
-      : row.defaultScopeId
+      : row.brokerOverride
+        ? null
+        : row.defaultScopeId
   const isManualSelected = row.brokerOverride?.kind === "manual"
+  const isSystemErvSelected = row.brokerOverride?.kind === "system-erv"
+  const hasSystemErv = row.systemErvPsf != null
 
   const commitManual = () => {
     const trimmed = manualDraft.trim()
@@ -110,9 +116,10 @@ export function ScopePopover({
           </div>
         )}
 
+        <div className="scope-popover-section-label">Comp scopes</div>
         <div className="scope-popover-list">
           {row.scopes.map((s) => {
-            const isSelected = !isManualSelected && s.id === selectedScopeId
+            const isSelected = s.id === selectedScopeId
             const isSystemDefault = s.id === row.defaultScopeId
             const isTooNarrow = s.compCount < MIN_COMPS_FOR_SCOPE
             return (
@@ -148,11 +155,30 @@ export function ScopePopover({
               </button>
             )
           })}
+          {hasSystemErv && (
+            <button
+              type="button"
+              className={`scope-option${isSystemErvSelected ? " selected" : ""}`}
+              onClick={() => onPickSystemErv()}
+            >
+              <span className="scope-option-radio" />
+              <span className="scope-option-body">
+                <span className="scope-option-label">
+                  External ERV
+                  <span className="badge erv">ERV</span>
+                </span>
+                <span className="scope-option-meta">
+                  <span>From market intelligence</span>
+                </span>
+              </span>
+              <span className="scope-option-rent">{formatPsf(row.systemErvPsf)}</span>
+            </button>
+          )}
         </div>
 
         <div className="scope-popover-manual">
           <div className="scope-popover-manual-label">
-            {isManualSelected ? "Broker estimate (active)" : "Or type your own estimate"}
+            {isManualSelected ? "Your ERV (active)" : "Your ERV — type a manual estimate"}
           </div>
           <div className="scope-popover-manual-row">
             <input

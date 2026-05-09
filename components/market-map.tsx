@@ -110,7 +110,9 @@ export function MarketMap({ rows }: Props) {
 
       let avgConfidence: SubmarketAggregate["avgConfidence"] = "muted"
       const confs = benchmarked.map((r) =>
-        r.comparisonSource === "broker" || r.comparisonSource === "scope-override"
+        r.comparisonSource === "broker" ||
+        r.comparisonSource === "scope-override" ||
+        r.comparisonSource === "erv-system"
           ? "high"
           : r.marketConfidence,
       )

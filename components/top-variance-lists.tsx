@@ -105,13 +105,16 @@ function ListCard({
                     {r.propertyType} · {r.submarket} ·{" "}
                     {r.sf.toLocaleString("en-US")} SF
                     {(r.comparisonSource === "broker" ||
-                      r.comparisonSource === "scope-override") && (
+                      r.comparisonSource === "scope-override" ||
+                      r.comparisonSource === "erv-system") && (
                       <>
                         {" · "}
                         <span style={{ color: "var(--accent)", fontWeight: 500 }}>
                           {r.comparisonSource === "broker"
-                            ? "broker estimate"
-                            : "alternate scope"}
+                            ? "your ERV"
+                            : r.comparisonSource === "erv-system"
+                              ? "external ERV"
+                              : "alternate scope"}
                         </span>
                       </>
                     )}

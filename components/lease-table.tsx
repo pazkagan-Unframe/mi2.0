@@ -15,6 +15,7 @@ type Props = {
   rows: LeaseRow[]
   onPickScope: (leaseId: string, scopeId: string) => void
   onSetManual: (leaseId: string, estimate: number) => void
+  onPickSystemErv: (leaseId: string) => void
   onClearOverride: (leaseId: string) => void
   onLeaseClick?: (leaseId: string) => void
 }
@@ -39,6 +40,7 @@ export function LeaseTable({
   rows,
   onPickScope,
   onSetManual,
+  onPickSystemErv,
   onClearOverride,
   onLeaseClick,
 }: Props) {
@@ -227,6 +229,7 @@ export function LeaseTable({
           onClose={closePopover}
           onPickScope={(scopeId) => onPickScope(popoverRow.id, scopeId)}
           onSetManual={(estimate) => onSetManual(popoverRow.id, estimate)}
+          onPickSystemErv={() => onPickSystemErv(popoverRow.id)}
           onClearOverride={() => onClearOverride(popoverRow.id)}
         />
       )}
@@ -291,7 +294,15 @@ function LeaseRowView({
           : "success"
 
   const isOverridden =
-    row.comparisonSource === "broker" || row.comparisonSource === "scope-override"
+    row.comparisonSource === "broker" ||
+    row.comparisonSource === "scope-override" ||
+    row.comparisonSource === "erv-system"
+  const overridePillLabel =
+    row.comparisonSource === "broker"
+      ? "Your ERV"
+      : row.comparisonSource === "erv-system"
+        ? "ERV"
+        : "Alt scope"
 
   const handleMarketClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
@@ -314,12 +325,14 @@ function LeaseRowView({
   )
   const compMeta =
     row.comparisonSource === "broker"
-      ? "Broker estimate"
-      : activeScope
-        ? `${activeScope.compCount} ${activeScope.compCount === 1 ? "comp" : "comps"}`
-        : null
+      ? "Your ERV"
+      : row.comparisonSource === "erv-system"
+        ? "External ERV"
+        : activeScope
+          ? `${activeScope.compCount} ${activeScope.compCount === 1 ? "comp" : "comps"}`
+          : null
   const compConfidence: Confidence =
-    row.comparisonSource === "broker"
+    row.comparisonSource === "broker" || row.comparisonSource === "erv-system"
       ? "high"
       : activeScope?.confidence ?? row.marketConfidence
 
@@ -361,18 +374,22 @@ function LeaseRowView({
                 <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13 }}>
                   {formatPsf(row.comparisonPsf)}
                 </span>
-                {isOverridden && <span className="broker-pill">Broker</span>}
+                {isOverridden && (
+                  <span className="broker-pill">{overridePillLabel}</span>
+                )}
               </span>
               <span className="meta" style={{ fontSize: 11, color: "var(--text-3)" }}>
                 {compMeta}
-                {compMeta && (
-                  <>
-                    {" · "}
-                    <span className={`scope-conf ${confidenceClass(compConfidence)}`}>
-                      {compConfidence}
-                    </span>
-                  </>
-                )}
+                {compMeta &&
+                  row.comparisonSource !== "broker" &&
+                  row.comparisonSource !== "erv-system" && (
+                    <>
+                      {" · "}
+                      <span className={`scope-conf ${confidenceClass(compConfidence)}`}>
+                        {compConfidence}
+                      </span>
+                    </>
+                  )}
               </span>
               <span className="meta" style={{ fontSize: 10, color: "var(--text-3)" }}>
                 {row.comparisonLabel}

@@ -15,6 +15,7 @@ type Props = {
   row: LeaseRow | null
   onClose: () => void
   onPickScope: (leaseId: string, scopeId: string) => void
+  onPickSystemErv: (leaseId: string) => void
   onClearOverride: (leaseId: string) => void
 }
 
@@ -32,6 +33,7 @@ export function LeaseDetailPanel({
   row,
   onClose,
   onPickScope,
+  onPickSystemErv,
   onClearOverride,
 }: Props) {
   useEffect(() => {
@@ -77,12 +79,14 @@ export function LeaseDetailPanel({
 
   const sourcePill =
     row.comparisonSource === "broker"
-      ? "Broker estimate"
-      : row.comparisonSource === "scope-override"
-        ? `Alternate scope · ${row.comparisonLabel}`
-        : row.comparisonSource === "market"
-          ? `System default · ${row.comparisonLabel}`
-          : "No comp set"
+      ? "Your ERV (manual)"
+      : row.comparisonSource === "erv-system"
+        ? "External ERV (market data)"
+        : row.comparisonSource === "scope-override"
+          ? `Alternate scope · ${row.comparisonLabel}`
+          : row.comparisonSource === "market"
+            ? `System default · ${row.comparisonLabel}`
+            : "No comp set"
 
   const activeScopeId =
     row.brokerOverride?.kind === "scope"
@@ -296,6 +300,34 @@ export function LeaseDetailPanel({
                     </button>
                   )
                 })}
+                {row.systemErvPsf != null && (
+                  <button
+                    type="button"
+                    className={`detail-scope-row${row.comparisonSource === "erv-system" ? " active" : ""}`}
+                    onClick={() => onPickSystemErv(row.id)}
+                    style={{
+                      textAlign: "left",
+                      cursor: "pointer",
+                      width: "100%",
+                      font: "inherit",
+                      color: "inherit",
+                    }}
+                  >
+                    <div className="label">
+                      <div className="name">
+                        External ERV
+                        <span className="badge erv">ERV</span>
+                        {row.comparisonSource === "erv-system" && (
+                          <span className="badge">In use</span>
+                        )}
+                      </div>
+                      <div className="meta">
+                        <span>From market intelligence</span>
+                      </div>
+                    </div>
+                    <div className="price">{formatPsf(row.systemErvPsf)}</div>
+                  </button>
+                )}
               </div>
             </section>
           )}
@@ -305,12 +337,18 @@ export function LeaseDetailPanel({
             <section className="panel-section">
               <div className="panel-section-title">Active override</div>
               <p>
-                This lease is using {row.brokerOverride.kind === "manual"
-                  ? "a manual broker estimate"
-                  : "an alternate comp scope"}{" "}
-                (<strong style={{ color: "var(--text)" }}>{row.brokerOverride.sourceLabel}</strong>)
-                instead of the system default. Overrides flow into all aggregates and
-                are saved to your account.
+                This lease is using{" "}
+                {row.brokerOverride.kind === "manual"
+                  ? "your manual ERV"
+                  : row.brokerOverride.kind === "system-erv"
+                    ? "the external ERV from our market data"
+                    : "an alternate comp scope"}{" "}
+                (
+                <strong style={{ color: "var(--text)" }}>
+                  {row.brokerOverride.sourceLabel}
+                </strong>
+                ) instead of the system default. Overrides flow into all aggregates
+                and are saved to your account.
               </p>
               <button
                 type="button"

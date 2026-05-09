@@ -124,11 +124,25 @@ export function buildLeasesWithScopes(leases: Lease[]): LeaseWithScopes[] {
       scopes.find((s) => s.compCount >= MIN_COMPS_FOR_SCOPE) ?? scopes[scopes.length - 1]
     const fellBack = defaultScope.id !== scopes[0].id
 
+    // System ERV: only ~50% of leases come with one (mirroring real-world
+    // coverage). When present, it sits within ±18% of the default-scope rent.
+    // If the lease object already specifies systemErvPsf we honor that.
+    let systemErvPsf: number | null = null
+    if (typeof lease.systemErvPsf === "number") {
+      systemErvPsf = lease.systemErvPsf
+    } else if (lease.systemErvPsf === null) {
+      systemErvPsf = null
+    } else if (seed("erv-has") < 0.55) {
+      const ervDrift = (seed("erv-drift") - 0.5) * 0.36
+      systemErvPsf = round2(defaultScope.rentPsf * (1 + ervDrift))
+    }
+
     return {
       ...lease,
       scopes,
       defaultScopeId: defaultScope.id,
       fellBack,
+      systemErvPsf,
       // Override the lease's marketRentPsf / marketCompCount / marketConfidence
       // to reflect the system-selected default scope, so existing UI uses the
       // right numbers without changes.

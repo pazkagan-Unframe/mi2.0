@@ -42,6 +42,12 @@ export type Lease = {
   /** Number of comparable leases used to compute marketRentPsf at the default scope. */
   marketCompCount: number
   marketConfidence: Confidence
+  /**
+   * Optional system-supplied Estimated Rental Value, sourced from external
+   * market intelligence outside the comp dataset. Available only for some
+   * leases. Selectable in the comp picker as an alternative to comp scopes.
+   */
+  systemErvPsf?: number | null
   /** ISO date (YYYY-MM-DD). */
   expiryDate: string
 }
@@ -53,21 +59,24 @@ export type LeaseWithScopes = Lease & {
   defaultScopeId: string
   /** True when narrowest scope had too few comps and the system fell back. */
   fellBack: boolean
+  /** Resolved system ERV (filled deterministically for a subset of leases). */
+  systemErvPsf: number | null
 }
 
 /**
- * Override stored per lease, per broker. Either source-of-truth is:
- * - a manual broker estimate (sourceLabel = "Broker estimate"), or
- * - a different scope from the chain (sourceLabel = scope label).
- * In both cases, estimatePsf is what we compare against.
+ * Override stored per lease, per broker. Sources:
+ * - "manual": broker typed their own ERV (sourceLabel = "Your ERV").
+ * - "scope": broker picked an alternate comp scope (sourceLabel = scope label).
+ * - "system-erv": broker chose to compare against the externally-sourced ERV
+ *   (sourceLabel = "External ERV"). estimatePsf holds the ERV at pick time.
+ * estimatePsf is always what we compare against.
  */
 export type BrokerOverride = {
   estimatePsf: number
-  /** Either "manual" (broker typed a number) or a scope id from the lease's chain. */
-  kind: "manual" | "scope"
+  kind: "manual" | "scope" | "system-erv"
   /** Scope id when kind === "scope". */
   scopeId?: string
-  /** Human label shown on the row, e.g. "Broker estimate" or "Office in Midtown". */
+  /** Human label shown on the row. */
   sourceLabel: string
   note?: string
   updatedAt: string
@@ -79,7 +88,14 @@ export type BrokerOverrides = Record<string, BrokerOverride>
 export type LeaseRow = LeaseWithScopes & {
   /** The rent we are comparing against. Override when present, else default scope rent. */
   comparisonPsf: number | null
-  comparisonSource: "broker" | "scope-override" | "market" | "none"
+  /**
+   * - "broker"         broker typed their own ERV
+   * - "scope-override" broker picked an alternate comp scope
+   * - "erv-system"     broker pinned the externally-sourced ERV
+   * - "market"         system default comp scope
+   * - "none"           no comparison data of any kind
+   */
+  comparisonSource: "broker" | "scope-override" | "erv-system" | "market" | "none"
   comparisonLabel: string
   /** currentRentPsf − comparisonPsf. Positive = above market (paying too much). */
   variancePsf: number | null
