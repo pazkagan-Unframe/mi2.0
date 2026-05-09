@@ -310,7 +310,6 @@ export default function Page() {
         selection={breakdownPanel}
         allRows={filteredRows}
         onClose={handleBreakdownClose}
-        onLeaseClick={handleLeaseClick}
         onPickScope={handlePickScope}
         onSetManual={handleSetManual}
         onPickSystemErv={handlePickSystemErv}

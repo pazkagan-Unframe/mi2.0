@@ -23,7 +23,6 @@ type Props = {
   selection: BreakdownPanelSelection | null
   allRows: LeaseRow[]
   onClose: () => void
-  onLeaseClick: (leaseId: string) => void
   onPickScope: (leaseId: string, scopeId: string) => void
   onSetManual: (leaseId: string, estimate: number) => void
   onPickSystemErv: (leaseId: string) => void
@@ -43,14 +42,14 @@ type PopoverState =
  * reveal the underlying leases in an explicit four-column layout
  * [Lease | Current | Market+source | Gap]. Clicking the Market cell on a lease
  * row opens an inline scope/ERV popover (same surface as the lease table).
- * Clicking elsewhere on the row opens the LeaseDetailPanel.
+ * The lease rows themselves are not navigable — we deliberately avoid
+ * stacking another side panel on top of this one.
  */
 export function BreakdownPanel({
   open,
   selection,
   allRows,
   onClose,
-  onLeaseClick,
   onPickScope,
   onSetManual,
   onPickSystemErv,
@@ -393,7 +392,6 @@ export function BreakdownPanel({
                         popoverActive={
                           popover.open && popover.leaseId === lease.id
                         }
-                        onLeaseClick={() => onLeaseClick(lease.id)}
                         onMarketClick={(rect) =>
                           setPopover({ open: true, leaseId: lease.id, rect })
                         }
@@ -425,12 +423,10 @@ export function BreakdownPanel({
 function BpLeaseRow({
   lease,
   popoverActive,
-  onLeaseClick,
   onMarketClick,
 }: {
   lease: LeaseRow
   popoverActive: boolean
-  onLeaseClick: () => void
   onMarketClick: (rect: DOMRect) => void
 }) {
   const tone =
@@ -476,27 +472,12 @@ function BpLeaseRow({
           ? `${activeScope.compCount} comps · ${activeScope.confidence}`
           : null
 
-  const handleRowClick = () => onLeaseClick()
-  const handleRowKey = (e: React.KeyboardEvent) => {
-    if (e.target !== e.currentTarget) return
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onLeaseClick()
-    }
-  }
   const handleMarketClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
     onMarketClick(e.currentTarget.getBoundingClientRect())
   }
 
   return (
-    <div
-      className="bp-lease"
-      role="button"
-      tabIndex={0}
-      onClick={handleRowClick}
-      onKeyDown={handleRowKey}
-    >
+    <div className="bp-lease">
       <div className="bp-lease-info">
         <div className="bp-lease-name">
           <span className="bp-lease-address">{lease.address}</span>

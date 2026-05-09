@@ -1333,15 +1333,8 @@ table.lease-table {
   font: inherit;
   color: inherit;
   text-align: left;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
 }
 .bp-lease:last-child { border-bottom: none; }
-.bp-lease:hover { background: var(--surface); }
-.bp-lease:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
 .bp-lease.bp-lease--header {
   cursor: default;
   padding-top: 8px;
