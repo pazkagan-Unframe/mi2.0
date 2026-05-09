@@ -4,13 +4,18 @@ import { useEffect, useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { groupAndAggregate } from "@/lib/calculations"
 import { formatDollars, formatPsf } from "@/lib/format"
+import { bucketKeyOf, type Granularity } from "@/lib/timeline"
 
 type GroupBy = "propertyType" | "submarket"
 
-export type BreakdownPanelSelection = {
-  outerGroupBy: GroupBy
-  outerKey: string
-}
+export type BreakdownPanelSelection =
+  | { kind: "group"; outerGroupBy: GroupBy; outerKey: string }
+  | {
+      kind: "period"
+      bucketKey: string
+      label: string
+      granularity: Granularity
+    }
 
 type Props = {
   open: boolean
@@ -21,9 +26,14 @@ type Props = {
 }
 
 /**
- * Side panel opened from a row in PortfolioBreakdown. Shows the cross-tab —
- * sub-markets within a property type, or property types within a sub-market.
- * Each cross-tab row is itself expandable to reveal the underlying leases
+ * Side panel shared by two flows:
+ * 1. "group" — opened from PortfolioBreakdown. Cross-tab of the *other* dimension
+ *    (sub-markets within a property type, or property types within a sub-market).
+ * 2. "period" — opened from RenewalTimeline. Cross-tab of sub-markets (default)
+ *    or property types within all leases expiring in the chosen period; the
+ *    user can toggle the inner dimension.
+ *
+ * In both cases each cross-tab row is expandable to reveal its underlying leases
  * inline. Clicking a lease opens the LeaseDetailPanel stacked above this one.
  */
 export function BreakdownPanel({
@@ -34,6 +44,7 @@ export function BreakdownPanel({
   onLeaseClick,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [periodInner, setPeriodInner] = useState<GroupBy>("submarket")
 
   useEffect(() => {
     if (!open) return
@@ -51,7 +62,8 @@ export function BreakdownPanel({
   // Reset which inner rows are expanded whenever the panel selection changes.
   useEffect(() => {
     setExpanded(new Set())
-  }, [selection?.outerGroupBy, selection?.outerKey])
+    setPeriodInner("submarket")
+  }, [selection])
 
   const toggle = (key: string) => {
     setExpanded((prev) => {
@@ -62,17 +74,28 @@ export function BreakdownPanel({
     })
   }
 
-  // Slice of the current filtered rows belonging to the outer scope.
+  // Subset of the current filtered rows belonging to the selected scope.
   const rows = useMemo(() => {
     if (!selection) return [] as LeaseRow[]
-    if (selection.outerGroupBy === "propertyType") {
-      return allRows.filter((r) => r.propertyType === selection.outerKey)
+    if (selection.kind === "group") {
+      if (selection.outerGroupBy === "propertyType") {
+        return allRows.filter((r) => r.propertyType === selection.outerKey)
+      }
+      return allRows.filter((r) => r.submarket === selection.outerKey)
     }
-    return allRows.filter((r) => r.submarket === selection.outerKey)
+    // period
+    return allRows.filter(
+      (r) => bucketKeyOf(r.expiryDate, selection.granularity) === selection.bucketKey,
+    )
   }, [allRows, selection])
 
-  const innerGroupBy: GroupBy =
-    selection?.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
+  const innerGroupBy: GroupBy = useMemo(() => {
+    if (!selection) return "submarket"
+    if (selection.kind === "group") {
+      return selection.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
+    }
+    return periodInner
+  }, [selection, periodInner])
 
   const innerHeading =
     innerGroupBy === "submarket" ? "Sub-markets" : "Property types"
@@ -109,10 +132,31 @@ export function BreakdownPanel({
       ? outerBenchmarked.reduce((s, r) => s + (r.varianceAnnual ?? 0), 0)
       : null
 
+  // Period view also breaks the dollar number into opportunity vs at-risk.
+  const periodOpportunity =
+    selection?.kind === "period"
+      ? rows.reduce((s, r) => s + Math.max(0, r.varianceAnnual ?? 0), 0)
+      : null
+  const periodAtRisk =
+    selection?.kind === "period"
+      ? rows.reduce((s, r) => s + Math.max(0, -(r.varianceAnnual ?? 0)), 0)
+      : null
+
   const eyebrowText =
-    selection?.outerGroupBy === "propertyType"
-      ? `${innerHeading} within property type`
-      : `${innerHeading} within sub-market`
+    selection == null
+      ? ""
+      : selection.kind === "group"
+        ? selection.outerGroupBy === "propertyType"
+          ? `${innerHeading} within property type`
+          : `${innerHeading} within sub-market`
+        : "Leases expiring in this period"
+
+  const titleText =
+    selection == null
+      ? ""
+      : selection.kind === "group"
+        ? selection.outerKey
+        : selection.label
 
   const outerTone =
     outerWeightedGapPsf == null
@@ -138,28 +182,78 @@ export function BreakdownPanel({
         <header className="panel-header">
           <div className="panel-eyebrow">{eyebrowText}</div>
           <h2 id="breakdown-panel-title" className="panel-title">
-            {selection?.outerKey ?? ""}
+            {titleText}
           </h2>
-          <p className="panel-subtitle">
-            {outerCount} {outerCount === 1 ? "lease" : "leases"} ·{" "}
-            {outerSf.toLocaleString("en-US")} SF
-            {outerWeightedGapPsf != null && (
-              <>
-                {" · "}
-                <span style={{ color: `var(--${outerTone === "muted" ? "text-3" : outerTone})` }}>
-                  {formatPsf(outerWeightedGapPsf, { sign: true })}/SF
-                </span>
-              </>
-            )}
-            {outerAnnual != null && (
-              <>
-                {" · "}
-                <span style={{ color: `var(--${outerTone === "muted" ? "text-3" : outerTone})` }}>
-                  {formatDollars(outerAnnual, { sign: true })}/yr
-                </span>
-              </>
-            )}
-          </p>
+
+          {selection?.kind === "period" ? (
+            <div className="panel-period-summary">
+              <div className="period-stat">
+                <div className="period-stat-label">
+                  <span className="dot above" /> Opportunity
+                </div>
+                <div className="period-stat-value danger">
+                  {formatDollars(periodOpportunity ?? 0)}
+                </div>
+              </div>
+              <div className="period-stat">
+                <div className="period-stat-label">
+                  <span className="dot below" /> At-risk savings
+                </div>
+                <div className="period-stat-value success">
+                  {formatDollars(periodAtRisk ?? 0)}
+                </div>
+              </div>
+              <div className="period-stat">
+                <div className="period-stat-label">Leases expiring</div>
+                <div className="period-stat-value">{outerCount}</div>
+              </div>
+            </div>
+          ) : (
+            <p className="panel-subtitle">
+              {outerCount} {outerCount === 1 ? "lease" : "leases"} ·{" "}
+              {outerSf.toLocaleString("en-US")} SF
+              {outerWeightedGapPsf != null && (
+                <>
+                  {" · "}
+                  <span style={{ color: `var(--${outerTone === "muted" ? "text-3" : outerTone})` }}>
+                    {formatPsf(outerWeightedGapPsf, { sign: true })}/SF
+                  </span>
+                </>
+              )}
+              {outerAnnual != null && (
+                <>
+                  {" · "}
+                  <span style={{ color: `var(--${outerTone === "muted" ? "text-3" : outerTone})` }}>
+                    {formatDollars(outerAnnual, { sign: true })}/yr
+                  </span>
+                </>
+              )}
+            </p>
+          )}
+
+          {selection?.kind === "period" && (
+            <div className="panel-inner-toggle" role="tablist" aria-label="Group by">
+              <button
+                type="button"
+                role="tab"
+                className={`seg-opt${periodInner === "submarket" ? " on" : ""}`}
+                aria-selected={periodInner === "submarket"}
+                onClick={() => setPeriodInner("submarket")}
+              >
+                By sub-market
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`seg-opt${periodInner === "propertyType" ? " on" : ""}`}
+                aria-selected={periodInner === "propertyType"}
+                onClick={() => setPeriodInner("propertyType")}
+              >
+                By property type
+              </button>
+            </div>
+          )}
+
           <button type="button" className="panel-close" onClick={onClose} aria-label="Close panel">
             ×
           </button>

@@ -15,6 +15,8 @@ import { LeaseDetailPanel } from "@/components/lease-detail-panel"
 import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
+import { RenewalTimeline } from "@/components/renewal-timeline"
+import type { Granularity } from "@/lib/timeline"
 import { SAMPLE_LEASES } from "@/lib/leases"
 import { buildLeasesWithScopes } from "@/lib/scope-chain"
 import {
@@ -159,11 +161,26 @@ export default function Page() {
   const handleBreakdownSelect = useCallback(
     (outerGroupBy: "propertyType" | "submarket", key: string) => {
       setMethodologyOpen(false)
-      setBreakdownPanel({ outerGroupBy, outerKey: key })
+      setBreakdownPanel({ kind: "group", outerGroupBy, outerKey: key })
     },
     [],
   )
   const handleBreakdownClose = useCallback(() => setBreakdownPanel(null), [])
+
+  // Open the breakdown panel filtered to a specific renewal period (a quarter
+  // or month). Doesn't touch global filters — pure drill-down.
+  const handleTimelineSelect = useCallback(
+    (bucketKey: string, bucketLabel: string, granularity: Granularity) => {
+      setMethodologyOpen(false)
+      setBreakdownPanel({
+        kind: "period",
+        bucketKey,
+        label: bucketLabel,
+        granularity,
+      })
+    },
+    [],
+  )
 
   // Lease detail panel — stacks above breakdown panel, can also be opened
   // from the top-variance lists or any lease row in the table.
@@ -214,13 +231,18 @@ export default function Page() {
           onFilterLowConfidence={filterLowConfidence}
         />
 
+        <div style={{ height: 16 }} />
+        <RenewalTimeline rows={filteredRows} onSelectPeriod={handleTimelineSelect} />
+
+        <div style={{ height: 16 }} />
         <div className="row split-50-50">
           <PortfolioBreakdown
             rows={filteredRows}
             groupBy="propertyType"
             onSelect={(key) => handleBreakdownSelect("propertyType", key)}
             selectedKey={
-              breakdownPanel?.outerGroupBy === "propertyType"
+              breakdownPanel?.kind === "group" &&
+              breakdownPanel.outerGroupBy === "propertyType"
                 ? breakdownPanel.outerKey
                 : null
             }
@@ -230,7 +252,8 @@ export default function Page() {
             groupBy="submarket"
             onSelect={(key) => handleBreakdownSelect("submarket", key)}
             selectedKey={
-              breakdownPanel?.outerGroupBy === "submarket"
+              breakdownPanel?.kind === "group" &&
+              breakdownPanel.outerGroupBy === "submarket"
                 ? breakdownPanel.outerKey
                 : null
             }
