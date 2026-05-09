@@ -37,21 +37,52 @@ export function ScopePopover({
       : "",
   )
 
-  // Position the popover next to the anchor, clamped to the viewport.
+  // Position the popover anchored to its trigger button. Strategy:
+  // 1. Prefer placing it to the LEFT of the anchor (so it doesn't cover the
+  //    side panel that contains the trigger).
+  // 2. If there isn't room on the left, place it to the RIGHT of the anchor.
+  // 3. If neither side has room, fall back to BELOW (or ABOVE) the anchor,
+  //    horizontally clamped to the viewport.
+  // Vertical alignment tracks the anchor's top, clamped to the viewport.
   useLayoutEffect(() => {
     if (!anchorRect) return
     const popWidth = 360
     const popHeight = popRef.current?.offsetHeight ?? 360
     const margin = 8
+    const sideGap = 8
 
-    let left = anchorRect.right - popWidth
-    if (left < margin) left = margin
-    if (left + popWidth > window.innerWidth - margin)
-      left = window.innerWidth - popWidth - margin
+    const roomLeft = anchorRect.left - margin - sideGap
+    const roomRight = window.innerWidth - anchorRect.right - margin - sideGap
 
-    let top = anchorRect.bottom + 6
+    let left: number
+    let top: number
+
+    if (roomLeft >= popWidth) {
+      // Place to the left of the anchor.
+      left = anchorRect.left - sideGap - popWidth
+    } else if (roomRight >= popWidth) {
+      // Place to the right of the anchor.
+      left = anchorRect.right + sideGap
+    } else {
+      // Not enough horizontal room on either side — drop below/above instead.
+      left = Math.min(
+        Math.max(margin, anchorRect.right - popWidth),
+        window.innerWidth - popWidth - margin,
+      )
+      const belowTop = anchorRect.bottom + sideGap
+      if (belowTop + popHeight <= window.innerHeight - margin) {
+        top = belowTop
+      } else {
+        top = Math.max(margin, anchorRect.top - sideGap - popHeight)
+      }
+      setPos({ left, top })
+      return
+    }
+
+    // Side-placement: vertically align to the anchor's top, clamp to viewport.
+    top = anchorRect.top
     if (top + popHeight > window.innerHeight - margin) {
-      top = anchorRect.top - popHeight - 6
+      top = window.innerHeight - margin - popHeight
     }
     if (top < margin) top = margin
 
