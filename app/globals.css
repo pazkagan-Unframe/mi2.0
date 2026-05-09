@@ -1397,7 +1397,7 @@ table.lease-table {
   text-align: right;
 }
 
-.bp-lease-market {
+button.bp-lease-market {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -1414,15 +1414,15 @@ table.lease-table {
   min-width: 0;
   transition: background-color 0.1s ease, border-color 0.1s ease;
 }
-.bp-lease-market:hover {
+button.bp-lease-market:hover {
   background: var(--surface);
   border-color: var(--border);
 }
-.bp-lease-market.active {
+button.bp-lease-market.active {
   background: var(--accent-bg);
   border-color: var(--accent);
 }
-.bp-lease-market:focus-visible {
+button.bp-lease-market:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -1456,6 +1456,23 @@ table.lease-table {
   text-align: center;
   color: var(--text-3);
   font-size: 12px;
+}
+
+/* Scope popover section label (above the comp scope list) */
+.scope-popover-section-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 14px 8px;
+}
+
+/* ERV badge variant — used in the comp picker and lease detail panel */
+.badge.erv {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* Clickable variant of the existing .list-item used in TopVarianceLists.
