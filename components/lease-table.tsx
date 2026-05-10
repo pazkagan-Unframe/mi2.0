@@ -316,25 +316,34 @@ function LeaseRowView({
 
   const popoverActive = popoverOpenForRowId === row.id
 
-  // Description below the market $/SF cell — comp count + confidence at the
-  // currently selected scope, or the broker label if overridden.
+  // Single muted subline below the market $/SF price. We deliberately collapse
+  // scope label + comp count + confidence into one line so the cell is two
+  // lines tall total (matching Lease / Sub-market cells), which lets
+  // vertical-align: middle on the td keep the price near the row centerline.
   const activeScope = row.scopes.find(
     (s) =>
       (row.brokerOverride?.kind === "scope" && s.id === row.brokerOverride.scopeId) ||
       (!row.brokerOverride && s.id === row.defaultScopeId),
   )
-  const compMeta =
-    row.comparisonSource === "broker"
-      ? "Your ERV"
-      : row.comparisonSource === "erv-system"
-        ? "External ERV"
-        : activeScope
-          ? `${activeScope.compCount} ${activeScope.compCount === 1 ? "comp" : "comps"}`
-          : null
   const compConfidence: Confidence =
     row.comparisonSource === "broker" || row.comparisonSource === "erv-system"
       ? "high"
       : activeScope?.confidence ?? row.marketConfidence
+  // For ERV/manual sources, show only the source label (no comp count makes
+  // sense). For scope-based sources, show "<scope> · <N> comps".
+  const subInfo: { label: string; showConf: boolean } | null =
+    row.comparisonPsf == null
+      ? null
+      : row.comparisonSource === "broker"
+        ? { label: "Your ERV", showConf: false }
+        : row.comparisonSource === "erv-system"
+          ? { label: "External ERV", showConf: false }
+          : activeScope
+            ? {
+                label: `${row.comparisonLabel} · ${activeScope.compCount} ${activeScope.compCount === 1 ? "comp" : "comps"}`,
+                showConf: true,
+              }
+            : { label: row.comparisonLabel, showConf: true }
 
   return (
     <tr
@@ -368,31 +377,38 @@ function LeaseRowView({
           className={`market-cell-trigger${popoverActive ? " active" : ""}`}
           onClick={handleMarketClick}
         >
-          {row.comparisonPsf != null ? (
+          {row.comparisonPsf != null && subInfo ? (
             <>
-              <span className="market-cell-num" style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13 }}>
+              <span
+                className="market-cell-num"
+                style={{ display: "flex", gap: 6, alignItems: "baseline" }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
                   {formatPsf(row.comparisonPsf)}
                 </span>
                 {isOverridden && (
                   <span className="broker-pill">{overridePillLabel}</span>
                 )}
               </span>
-              <span className="meta" style={{ fontSize: 11, color: "var(--text-3)" }}>
-                {compMeta}
-                {compMeta &&
-                  row.comparisonSource !== "broker" &&
-                  row.comparisonSource !== "erv-system" && (
-                    <>
-                      {" · "}
-                      <span className={`scope-conf ${confidenceClass(compConfidence)}`}>
-                        {compConfidence}
-                      </span>
-                    </>
-                  )}
-              </span>
-              <span className="meta" style={{ fontSize: 10, color: "var(--text-3)" }}>
-                {row.comparisonLabel}
+              <span
+                className="meta"
+                style={{ fontSize: 11, color: "var(--text-3)" }}
+              >
+                {subInfo.label}
+                {subInfo.showConf && (
+                  <>
+                    {" · "}
+                    <span className={`scope-conf ${confidenceClass(compConfidence)}`}>
+                      {compConfidence}
+                    </span>
+                  </>
+                )}
               </span>
             </>
           ) : (

@@ -1595,15 +1595,17 @@ button.list-item.clickable:last-child { border-bottom: none; }
   margin: -2px -6px;
   border-radius: 4px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: flex-end;
+  justify-content: center;
   gap: 2px;
   font: inherit;
   color: inherit;
   text-align: right;
   transition: background-color 0.12s ease;
-}
+  vertical-align: middle;
+  }
 .market-cell-trigger:hover {
   background: var(--surface-2);
 }
