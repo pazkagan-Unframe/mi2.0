@@ -31,25 +31,38 @@ const NEAR_TERM_MONTHS = 12
  * Clicking any column opens the breakdown side panel filtered to that period —
  * same drill-down as the renewal timeline beneath it.
  */
+/**
+ * "full" shows the entire spend stack (locked + actionable) so absolute
+ * magnitudes are honest. "actionable" hides the locked baseline and rescales
+ * to the largest expiring portion, surfacing the current-vs-market delta on
+ * periods where the renegotiable slice is small relative to total spend.
+ */
+type ViewMode = "full" | "actionable"
+
 export function SpendComposition({ rows, onSelectPeriod }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("quarter")
   const [horizon, setHorizon] = useState<HorizonMonths>(24)
+  const [viewMode, setViewMode] = useState<ViewMode>("full")
 
   const data = useMemo(
     () => buildSpendComposition(rows, granularity, horizon),
     [rows, granularity, horizon],
   )
 
-  // Y-axis scale: anchored to the largest bar across all visible buckets in
-  // either column. Add a small headroom so the tallest bar isn't flush.
+  // Y-axis scale: anchored to the largest visible bar across both columns.
+  // In "actionable" mode we exclude the locked baseline so the rescale makes
+  // small deltas visible.
   const maxBar = useMemo(() => {
     let m = 0
     for (const b of data.buckets) {
-      if (b.totalCurrent > m) m = b.totalCurrent
-      if (b.totalMarket > m) m = b.totalMarket
+      const hi =
+        viewMode === "actionable"
+          ? Math.max(b.expiringSpendCurrent, b.expiringSpendMarket)
+          : Math.max(b.totalCurrent, b.totalMarket)
+      if (hi > m) m = hi
     }
     return Math.max(1, m * 1.04)
-  }, [data.buckets])
+  }, [data.buckets, viewMode])
 
   const netLabel =
     data.horizonNetDelta > 0
@@ -77,6 +90,26 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
           </div>
         </div>
         <div className="timeline-controls">
+          <div className="seg" role="group" aria-label="Spend view">
+            <button
+              type="button"
+              className={`seg-opt${viewMode === "full" ? " on" : ""}`}
+              onClick={() => setViewMode("full")}
+              aria-pressed={viewMode === "full"}
+              title="Show locked + actionable spend"
+            >
+              Full spend
+            </button>
+            <button
+              type="button"
+              className={`seg-opt${viewMode === "actionable" ? " on" : ""}`}
+              onClick={() => setViewMode("actionable")}
+              aria-pressed={viewMode === "actionable"}
+              title="Hide non-expiring baseline, rescale to actionable spend"
+            >
+              Actionable only
+            </button>
+          </div>
           <div className="seg">
             <button
               type="button"
@@ -155,6 +188,7 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
         buckets={data.buckets}
         maxBar={maxBar}
         granularity={granularity}
+        viewMode={viewMode}
         onSelectPeriod={onSelectPeriod}
       />
     </section>
@@ -165,11 +199,13 @@ function SpendChart({
   buckets,
   maxBar,
   granularity,
+  viewMode,
   onSelectPeriod,
 }: {
   buckets: SpendBucket[]
   maxBar: number
   granularity: Granularity
+  viewMode: ViewMode
   onSelectPeriod: (key: string, label: string, granularity: Granularity) => void
 }) {
   const [hovered, setHovered] = useState<string | null>(null)
@@ -191,7 +227,11 @@ function SpendChart({
       <div className="timeline-chart sc-chart" role="list">
         {buckets.map((b) => {
           const dim = b.monthsFromNow >= NEAR_TERM_MONTHS
-          const lockedH = (b.lockedSpend / maxBar) * 100
+          // In "actionable only" mode the locked baseline is hidden — the top
+          // (expiring) segment anchors at 0 and gets the full chart height to
+          // expand into.
+          const lockedH =
+            viewMode === "actionable" ? 0 : (b.lockedSpend / maxBar) * 100
           const topCurrentH = (b.expiringSpendCurrent / maxBar) * 100
           const topMarketH = (b.expiringSpendMarket / maxBar) * 100
           const isHovered = hovered === b.key
