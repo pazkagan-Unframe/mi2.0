@@ -16,6 +16,7 @@ import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
 import { RenewalTimeline } from "@/components/renewal-timeline"
+import { SpendComposition } from "@/components/spend-composition"
 import type { Granularity } from "@/lib/timeline"
 import { SAMPLE_LEASES } from "@/lib/leases"
 import { buildLeasesWithScopes } from "@/lib/scope-chain"
@@ -245,6 +246,12 @@ export default function Page() {
           stats={pulse}
           filters={filters}
           onFilterLowConfidence={filterLowConfidence}
+        />
+
+        <div style={{ height: 16 }} />
+        <SpendComposition
+          rows={filteredRows}
+          onSelectPeriod={handleTimelineSelect}
         />
 
         <div style={{ height: 16 }} />

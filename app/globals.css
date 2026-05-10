@@ -1959,6 +1959,11 @@ button.list-item.clickable:last-child { border-bottom: none; }
 .dot.above { background: var(--danger); }
 .dot.below { background: var(--success); }
 .dot.grey { background: var(--text-3); }
+.dot.locked { background: color-mix(in srgb, var(--text-3) 55%, transparent); }
+.dot.current { background: var(--text-2); }
+.dot.success { background: var(--success); }
+.dot.danger { background: var(--danger); }
+.dot.muted { background: var(--text-3); }
 
 .timeline-chart-wrap {
   position: relative;
@@ -2146,6 +2151,54 @@ button.list-item.clickable:last-child { border-bottom: none; }
   margin-top: 2px;
   text-align: right;
 }
+
+/* SPEND COMPOSITION CHART
+   Pairs of stacked bars per period: column 1 = current spend, column 2 =
+   spend at market rates. Locked baseline (non-expiring leases) is identical
+   across both columns within the same period; only the top "actionable"
+   segment differs. Built on top of the timeline-card / tl-col primitives. */
+.spend-card .timeline-chart.sc-chart {
+  min-height: 220px;
+}
+.sc-col-bars {
+  position: relative;
+  height: 180px;
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+.sc-col-bars .sc-stack {
+  position: relative;
+  flex: 1;
+  max-width: 22px;
+  height: 100%;
+}
+.sc-seg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 2px;
+  transition: height 0.18s ease, bottom 0.18s ease;
+}
+.sc-seg-locked {
+  bottom: 0;
+  background: color-mix(in srgb, var(--text-3) 32%, transparent);
+}
+.sc-seg-top {
+  border-radius: 3px 3px 0 0;
+}
+.sc-top-current { background: var(--text-2); }
+.sc-top-savings { background: var(--success); }
+.sc-top-risk { background: var(--danger); }
+.sc-top-neutral {
+  background: color-mix(in srgb, var(--text-3) 60%, transparent);
+}
+.tl-col.dim .sc-seg { opacity: 0.55; }
+.tl-col.dim .sc-seg-locked { opacity: 0.4; }
 
 /* BREAKDOWN PANEL — period mode summary + inner toggle */
 .panel-period-summary {

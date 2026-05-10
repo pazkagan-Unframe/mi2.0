@@ -29,6 +29,20 @@ export type TimelineBucket = {
   totalCount: number
 }
 
+/**
+ * Bucket "shell" — pure metadata for a period within the visible horizon,
+ * without any per-row aggregations. Used by both the renewal timeline and
+ * the spend composition chart so they stay in lock-step on period definition.
+ */
+export type BucketShell = {
+  key: string
+  label: string
+  longLabel: string
+  startMs: number
+  endMs: number
+  monthsFromNow: number
+}
+
 /** Compute the bucket key a given expiry date falls into. */
 export function bucketKeyOf(iso: string, granularity: Granularity): string {
   const d = new Date(iso)
@@ -120,6 +134,34 @@ function bucketKeysInHorizon(granularity: Granularity, horizon: HorizonMonths): 
 }
 
 /**
+ * Enumerate the bucket shells covering the given horizon, starting at "now".
+ * Pure metadata — no row aggregation. Both buildTimeline and buildSpendBuckets
+ * use this so all period-based charts share an identical X-axis.
+ */
+export function enumerateBuckets(
+  granularity: Granularity,
+  horizon: HorizonMonths,
+): BucketShell[] {
+  const now = new Date()
+  const keys = bucketKeysInHorizon(granularity, horizon)
+  return keys.map((k) => {
+    const start = bucketStart(k, granularity)
+    const end = bucketEnd(k, granularity)
+    const monthsFromNow =
+      (start.getFullYear() - now.getFullYear()) * 12 +
+      (start.getMonth() - now.getMonth())
+    return {
+      key: k,
+      label: shortLabel(k, granularity),
+      longLabel: longLabel(k, granularity),
+      startMs: start.getTime(),
+      endMs: end.getTime(),
+      monthsFromNow,
+    }
+  })
+}
+
+/**
  * Build the timeline for the given rows, granularity and horizon.
  * Only includes leases whose expiry falls inside the horizon window.
  */
@@ -128,21 +170,11 @@ export function buildTimeline(
   granularity: Granularity,
   horizon: HorizonMonths,
 ): TimelineBucket[] {
-  const now = new Date()
-  const keys = bucketKeysInHorizon(granularity, horizon)
+  const shells = enumerateBuckets(granularity, horizon)
   const map = new Map<string, TimelineBucket>()
-  for (const k of keys) {
-    const start = bucketStart(k, granularity)
-    const end = bucketEnd(k, granularity)
-    const monthsFromNow =
-      (start.getFullYear() - now.getFullYear()) * 12 + (start.getMonth() - now.getMonth())
-    map.set(k, {
-      key: k,
-      label: shortLabel(k, granularity),
-      longLabel: longLabel(k, granularity),
-      startMs: start.getTime(),
-      endMs: end.getTime(),
-      monthsFromNow,
+  for (const shell of shells) {
+    map.set(shell.key, {
+      ...shell,
       opportunity: 0,
       atRisk: 0,
       benchmarkedCount: 0,
@@ -168,7 +200,7 @@ export function buildTimeline(
     }
   }
 
-  return keys.map((k) => map.get(k)!)
+  return shells.map((s) => map.get(s.key)!)
 }
 
 /** Filter rows to those expiring inside the given bucket. */
