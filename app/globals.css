@@ -2506,6 +2506,50 @@ button.list-item.clickable:last-child { border-bottom: none; }
   margin-top: 4px;
 }
 
+/* Right-side cluster: optional reset link + the meta count */
+.mi-scope-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mi-scope-reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  height: 36px;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.mi-scope-reset:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* Grouped sections inside the picker popover */
+.mi-scope-group {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.mi-scope-group:first-child,
+.mi-scope-list > li:first-child .mi-scope-group {
+  border-top: none;
+}
+.mi-scope-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .mi-tabs {
   display: flex;
   gap: 0;

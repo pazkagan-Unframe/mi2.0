@@ -13,6 +13,7 @@ import {
 import { LeaseTable } from "@/components/lease-table"
 import { LeaseDetailPanel } from "@/components/lease-detail-panel"
 import { MarketIntelligence } from "@/components/market-intelligence"
+import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
 import { RenewalTimeline } from "@/components/renewal-timeline"
@@ -230,6 +231,14 @@ export default function Page() {
       <div className="container">
         <PageHeader onOpenMethodology={() => setMethodologyOpen(true)} />
 
+        <FilterBar
+          filters={filters}
+          onChange={setFilters}
+          availableSubmarkets={availableSubmarkets}
+          propertyTypeCounts={propertyTypeCounts}
+          submarketCounts={submarketCounts}
+        />
+
         <div className="section-tabs" role="tablist" aria-label="Dashboard mode">
           <button
             type="button"
@@ -239,7 +248,7 @@ export default function Page() {
             onClick={() => setPageMode("portfolio")}
           >
             Portfolio
-            <span className="count">{allRows.length}</span>
+            <span className="count">{filteredRows.length}</span>
           </button>
           <button
             type="button"
@@ -248,17 +257,9 @@ export default function Page() {
             className={`section-tab${pageMode === "market" ? " active" : ""}`}
             onClick={() => setPageMode("market")}
           >
-            Market browser
+            Market analysis
           </button>
         </div>
-
-        <FilterBar
-          filters={filters}
-          onChange={setFilters}
-          availableSubmarkets={availableSubmarkets}
-          propertyTypeCounts={propertyTypeCounts}
-          submarketCounts={submarketCounts}
-        />
 
         {pageMode === "portfolio" ? (
           <>
@@ -304,6 +305,9 @@ export default function Page() {
             </div>
 
             <div style={{ height: 16 }} />
+            <MarketMap rows={filteredRows} />
+
+            <div style={{ height: 16 }} />
             <TopVarianceLists rows={filteredRows} onLeaseClick={handleLeaseClick} />
 
             <div style={{ height: 16 }} />
@@ -317,7 +321,7 @@ export default function Page() {
             />
           </>
         ) : (
-          <MarketIntelligence rows={filteredRows} chromeless />
+          <MarketIntelligence portfolioRows={filteredRows} />
         )}
 
         <div className="page-footer">

@@ -18,7 +18,16 @@ import { useMemo } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { formatDollars } from "@/lib/format"
 
-type Props = { rows: LeaseRow[] }
+type Props = {
+  rows: LeaseRow[]
+  /**
+   * Optional override for the synthetic-series seed and scope label. When the
+   * scope includes "comparable" markets that have no leases, `rows` alone
+   * doesn't reflect them — passing the explicit market keys lets vacancy /
+   * supply / construction / etc. respond to those additions.
+   */
+  marketKeys?: string[]
+}
 
 // ---------------- shared helpers ----------------
 
@@ -50,29 +59,39 @@ const YEARS = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
 
 // ---------------- root ----------------
 
-export function MarketAnalysis({ rows }: Props) {
+export function MarketAnalysis({ rows, marketKeys }: Props) {
   const submarkets = useMemo(() => {
     const m = new Map<string, number>()
     for (const r of rows) m.set(r.submarket, (m.get(r.submarket) ?? 0) + 1)
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [rows])
 
-  const scopeLabel = submarkets.length === 0
-    ? "No markets"
-    : submarkets.length === 1
-      ? `${submarkets[0][0]}`
-      : `${Math.min(submarkets.length, 5)} markets`
+  // Prefer an explicit market list (so added "comparable" markets affect
+  // synthetic series even though they carry no leases). Fall back to the
+  // submarkets pulled from rows.
+  const marketCount = marketKeys?.length ?? submarkets.length
+  const scopeLabel =
+    marketCount === 0
+      ? "No markets"
+      : marketCount === 1
+        ? (marketKeys?.[0] ?? submarkets[0][0])
+        : `${marketCount} markets`
 
-  const seed = submarkets.slice(0, 5).map((s) => s[0]).join("|") || "default"
+  const seed =
+    marketKeys && marketKeys.length > 0
+      ? marketKeys.slice().sort().join("|")
+      : submarkets.slice(0, 5).map((s) => s[0]).join("|") || "default"
 
-  if (rows.length === 0) {
+  // Allow rendering with no rows when the user has selected only added
+  // markets — synthetic widgets still produce useful context.
+  if (rows.length === 0 && (!marketKeys || marketKeys.length === 0)) {
     return (
       <section className="card">
         <header className="card-header">
           <div className="card-title">Market analysis</div>
         </header>
         <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-          No leases in scope — adjust filters to see market widgets.
+          No markets in scope — adjust filters to see market widgets.
         </div>
       </section>
     )
