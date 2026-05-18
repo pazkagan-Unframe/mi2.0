@@ -77,11 +77,13 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
         <div>
           <div className="card-title">Renewal &amp; spend impact</div>
           <div className="card-sub">
-            Annual run-rate spend per period split into locked (non-expiring)
-            and actionable (expiring). The market column shows what the
-            actionable portion would cost at comp rates — green bars mean
-            current spend is above market (renegotiation opportunity), red
-            means below market (at-risk savings).
+            For each period we compare what you currently pay on expiring
+            leases (left bar, split by variance vs market) against what that
+            same slice would cost at market (right bar, neutral grey). The red
+            portion of the current bar is the renegotiation opportunity
+            (you&apos;re paying above market) and the green portion is the
+            at-risk savings (you&apos;re paying below market — a renewal at
+            market would cost more).
           </div>
         </div>
         <div className="timeline-controls">
@@ -233,14 +235,14 @@ function SpendChart({
           // expand into.
           const lockedH =
             viewMode === "actionable" ? 0 : (b.lockedSpend / maxBar) * 100
-          const topCurrentH = (b.expiringSpendCurrent / maxBar) * 100
-          const topMarketH = (b.expiringSpendMarket / maxBar) * 100
+          // Heights for the three variance slices on the CURRENT bar.
+          const aboveH = (b.expiringCurrentAbove / maxBar) * 100
+          const atH = (b.expiringCurrentAt / maxBar) * 100
+          const belowH = (b.expiringCurrentBelow / maxBar) * 100
+          // Market bar is a single neutral segment.
+          const marketH = (b.expiringSpendMarket / maxBar) * 100
           const isHovered = hovered === b.key
           const isActionable = b.expiringCount > 0
-          // The "delta" tells the story: green (savings) when current > market,
-          // red (at-risk) when current < market.
-          const variant: "savings" | "risk" | "neutral" =
-            b.netDelta > 0 ? "savings" : b.netDelta < 0 ? "risk" : "neutral"
 
           return (
             <button
@@ -263,22 +265,19 @@ function SpendChart({
                 {isActionable ? b.expiringCount : ""}
               </div>
               <div className="sc-col-bars">
-                <SpendStack
-                  variant="current"
+                {/* Current bar: opportunity (red) + at-market + at-risk (green). */}
+                <CurrentStack
                   lockedH={lockedH}
-                  topH={topCurrentH}
+                  aboveH={aboveH}
+                  atH={atH}
+                  belowH={belowH}
                 />
-                <SpendStack
-                  variant={variant}
-                  lockedH={lockedH}
-                  topH={topMarketH}
-                />
+                {/* Market bar: single neutral grey segment. */}
+                <MarketStack lockedH={lockedH} topH={marketH} />
               </div>
               <div className="tl-col-label">{b.label}</div>
 
-              {isHovered && (
-                <SpendTooltip bucket={b} variant={variant} />
-              )}
+              {isHovered && <SpendTooltip bucket={b} />}
             </button>
           )
         })}
@@ -298,50 +297,81 @@ function SpendChart({
   )
 }
 
-function SpendStack({
-  variant,
+function CurrentStack({
+  lockedH,
+  aboveH,
+  atH,
+  belowH,
+}: {
+  lockedH: number
+  aboveH: number
+  atH: number
+  belowH: number
+}) {
+  // The "current" bar splits the actionable spend by variance vs market:
+  //   bottom → top: locked (grey) | at-risk savings (green) | at-market | opportunity (red)
+  // The vertical order intentionally puts the green floor first (positions
+  // currently below market — savings you'd lose at renewal) and the red cap
+  // on top (positions currently above market — what you can renegotiate
+  // down). Stacking is bottom-anchored using the running cumulative height.
+  const greenBottom = lockedH
+  const atBottom = greenBottom + belowH
+  const redBottom = atBottom + atH
+  return (
+    <div className="sc-stack" aria-hidden="true">
+      <div className="sc-seg sc-seg-locked" style={{ height: `${lockedH}%` }} />
+      {belowH > 0 && (
+        <div
+          className="sc-seg sc-seg-top sc-top-savings"
+          style={{ height: `${belowH}%`, bottom: `${greenBottom}%` }}
+        />
+      )}
+      {atH > 0 && (
+        <div
+          className="sc-seg sc-seg-top sc-top-current"
+          style={{ height: `${atH}%`, bottom: `${atBottom}%` }}
+        />
+      )}
+      {aboveH > 0 && (
+        <div
+          className="sc-seg sc-seg-top sc-top-risk"
+          style={{ height: `${aboveH}%`, bottom: `${redBottom}%` }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MarketStack({
   lockedH,
   topH,
 }: {
-  variant: "current" | "savings" | "risk" | "neutral"
   lockedH: number
   topH: number
 }) {
-  // Two segments stacked. Locked at the bottom (always neutral grey), the top
-  // segment varies by column: dark for "current you pay", green for "market
-  // savings", red for "market at-risk".
+  // The "market" bar is intentionally a single neutral grey on top of the
+  // shared locked baseline — the eye reads it as the calm reference against
+  // which the colored current bar pops.
   return (
     <div className="sc-stack" aria-hidden="true">
+      <div className="sc-seg sc-seg-locked" style={{ height: `${lockedH}%` }} />
       <div
-        className="sc-seg sc-seg-locked"
-        style={{ height: `${lockedH}%` }}
-      />
-      <div
-        className={`sc-seg sc-seg-top sc-top-${variant}`}
+        className="sc-seg sc-seg-top sc-top-market"
         style={{ height: `${topH}%`, bottom: `${lockedH}%` }}
       />
     </div>
   )
 }
 
-function SpendTooltip({
-  bucket: b,
-  variant,
-}: {
-  bucket: SpendBucket
-  variant: "savings" | "risk" | "neutral"
-}) {
-  const deltaClass =
-    variant === "savings"
-      ? "success"
-      : variant === "risk"
-        ? "danger"
-        : "muted"
-  const deltaLabel =
-    variant === "savings"
-      ? "Renegotiation upside"
-      : variant === "risk"
-        ? "At-risk savings"
+function SpendTooltip({ bucket: b }: { bucket: SpendBucket }) {
+  const netDollars = b.opportunity - b.atRisk
+  const netClass =
+    netDollars > 0 ? "danger" : netDollars < 0 ? "success" : "muted"
+  const netLabel =
+    netDollars > 0
+      ? "Net renegotiation upside"
+      : netDollars < 0
+        ? "Net at-risk savings"
         : "Net to market"
 
   return (
@@ -349,36 +379,34 @@ function SpendTooltip({
       <div className="tl-tip-title">{b.longLabel}</div>
       <div className="tl-tip-row">
         <span className="lbl">
-          <span className="dot current" /> Expiring (current)
-        </span>
-        <span className="val">{formatDollars(b.expiringSpendCurrent)}</span>
-      </div>
-      <div className="tl-tip-row">
-        <span className="lbl">
-          <span className={`dot ${deltaClass}`} /> Expiring (market)
-        </span>
-        <span className="val">{formatDollars(b.expiringSpendMarket)}</span>
-      </div>
-      <div className="tl-tip-divider" />
-      {/* Variance breakdown — surfaces the same opportunity/at-risk numbers
-          that used to live in the separate Renewal timeline tooltip. */}
-      <div className="tl-tip-row">
-        <span className="lbl">
-          <span className="dot above" /> Opportunity
+          <span className="dot above" /> Opportunity (above market)
         </span>
         <span className="val danger">{formatDollars(b.opportunity)}</span>
       </div>
       <div className="tl-tip-row">
         <span className="lbl">
-          <span className="dot below" /> At-risk savings
+          <span className="dot below" /> At-risk savings (below market)
         </span>
         <span className="val success">{formatDollars(b.atRisk)}</span>
       </div>
       <div className="tl-tip-row">
-        <span className="lbl">{deltaLabel}</span>
-        <span className={`val ${deltaClass}`}>
-          {formatDollars(Math.abs(b.netDelta), { sign: false })}
+        <span className="lbl">{netLabel}</span>
+        <span className={`val ${netClass}`}>
+          {formatDollars(Math.abs(netDollars), { sign: false })}
         </span>
+      </div>
+      <div className="tl-tip-divider" />
+      <div className="tl-tip-row">
+        <span className="lbl">
+          <span className="dot current" /> Expiring at current
+        </span>
+        <span className="val">{formatDollars(b.expiringSpendCurrent)}</span>
+      </div>
+      <div className="tl-tip-row">
+        <span className="lbl">
+          <span className="dot market" /> Expiring at market
+        </span>
+        <span className="val">{formatDollars(b.expiringSpendMarket)}</span>
       </div>
       <div className="tl-tip-divider" />
       <div className="tl-tip-row">

@@ -49,6 +49,18 @@ export type SpendBucket = BucketShell & {
   aboveCount: number
   /** Count of expiring leases below market. */
   belowCount: number
+  /**
+   * Current annual spend coming from above-market expiring leases. Used to
+   * split the "current" bar into a red (opportunity) segment.
+   */
+  expiringCurrentAbove: number
+  /** Current annual spend from at-market expiring leases (or missing comp). */
+  expiringCurrentAt: number
+  /**
+   * Current annual spend from below-market expiring leases. Used to split the
+   * "current" bar into a green (at-risk savings) segment.
+   */
+  expiringCurrentBelow: number
 }
 
 export type SpendComposition = {
@@ -98,6 +110,9 @@ export function buildSpendComposition(
       atRisk: 0,
       aboveCount: 0,
       belowCount: 0,
+      expiringCurrentAbove: 0,
+      expiringCurrentAt: 0,
+      expiringCurrentBelow: 0,
     })
   }
 
@@ -125,16 +140,24 @@ export function buildSpendComposition(
         bucket.expiringSpendMarket += annualMarket
         if (r.comparisonPsf == null) {
           bucket.expiringWithoutComp += 1
+          // No comp → treat as at-market for the visualization.
+          bucket.expiringCurrentAt += annualCurrent
         } else if (r.varianceAnnual != null) {
           // Same convention as the timeline: opportunity = above-market $,
           // at-risk = |below-market $|. varianceAnnual is signed.
           if (r.varianceAnnual > 0) {
             bucket.opportunity += r.varianceAnnual
             bucket.aboveCount += 1
+            bucket.expiringCurrentAbove += annualCurrent
           } else if (r.varianceAnnual < 0) {
             bucket.atRisk += -r.varianceAnnual
             bucket.belowCount += 1
+            bucket.expiringCurrentBelow += annualCurrent
+          } else {
+            bucket.expiringCurrentAt += annualCurrent
           }
+        } else {
+          bucket.expiringCurrentAt += annualCurrent
         }
       } else {
         // Lease expires elsewhere (or outside horizon) → counts as locked

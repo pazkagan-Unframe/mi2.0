@@ -2019,6 +2019,7 @@ button.list-item.clickable:last-child { border-bottom: none; }
 .dot.grey { background: var(--text-3); }
 .dot.locked { background: color-mix(in srgb, var(--text-3) 55%, transparent); }
 .dot.current { background: var(--text-2); }
+.dot.market { background: color-mix(in srgb, var(--text-3) 55%, transparent); }
 .dot.success { background: var(--success); }
 .dot.danger { background: var(--danger); }
 .dot.muted { background: var(--text-3); }
@@ -2250,9 +2251,20 @@ button.list-item.clickable:last-child { border-bottom: none; }
 .sc-seg-top {
   border-radius: 3px 3px 0 0;
 }
-.sc-top-current { background: var(--text-2); }
+.sc-top-current {
+  /* At-market portion of the CURRENT bar — a darker, slightly warm neutral
+     so it sits between the green floor and the red cap without competing
+     visually with either. */
+  background: color-mix(in srgb, var(--text-2) 70%, transparent);
+}
 .sc-top-savings { background: var(--success); }
 .sc-top-risk { background: var(--danger); }
+.sc-top-market {
+  /* Market reference bar — intentionally a calm cool grey so the colored
+     current bar pops next to it. Slightly more saturated than sc-seg-locked
+     so the "above-locked" portion is visible in full-spend mode. */
+  background: color-mix(in srgb, var(--text-3) 55%, transparent);
+}
 .sc-top-neutral {
   background: color-mix(in srgb, var(--text-3) 60%, transparent);
 }
