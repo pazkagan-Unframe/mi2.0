@@ -2268,6 +2268,70 @@ button.list-item.clickable:last-child { border-bottom: none; }
 .sc-top-neutral {
   background: color-mix(in srgb, var(--text-3) 60%, transparent);
 }
+
+/* Visual key — sits between the totals strip and the chart, so users read
+   each pair as "your spend (colored) vs market (grey)" before scanning the
+   bars themselves. The two miniature bars mirror the actual chart segments
+   1:1. */
+.sc-key {
+  display: flex;
+  gap: 24px;
+  padding: 12px 16px;
+  margin: 0 0 8px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+.sc-key-pair {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.sc-key-bar {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 12px;
+  height: 28px;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sc-key-seg {
+  display: block;
+  width: 100%;
+}
+.sc-key-bar-yours .sc-key-seg.sc-top-risk { height: 25%; }
+.sc-key-bar-yours .sc-key-seg.sc-top-current { height: 35%; }
+.sc-key-bar-yours .sc-key-seg.sc-top-savings { height: 40%; }
+.sc-key-bar-market .sc-key-seg.sc-top-market { height: 100%; }
+.sc-key-label {
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.sc-key-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+.sc-key-sub.muted {
+  color: var(--text-3);
+}
+.sc-key-sub .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+@media (max-width: 720px) {
+  .sc-key {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
 .tl-col.dim .sc-seg { opacity: 0.55; }
 .tl-col.dim .sc-seg-locked { opacity: 0.4; }
 

@@ -68,8 +68,11 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
       : netDollars < 0
         ? "Net at-risk savings"
         : "Net to market"
+  // Color convention across the whole component:
+  //   Opportunity (above market → you can renegotiate down) → green / success
+  //   At-risk savings (below market → renewal will cost more) → red / danger
   const netClass =
-    netDollars > 0 ? "danger" : netDollars < 0 ? "success" : "muted"
+    netDollars > 0 ? "success" : netDollars < 0 ? "danger" : "muted"
 
   return (
     <section className="card timeline-card spend-card">
@@ -77,11 +80,11 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
         <div>
           <div className="card-title">Renewal &amp; spend impact</div>
           <div className="card-sub">
-            For each period we compare what you currently pay on expiring
-            leases (left bar, split by variance vs market) against what that
-            same slice would cost at market (right bar, neutral grey). The red
-            portion of the current bar is the renegotiation opportunity
-            (you&apos;re paying above market) and the green portion is the
+            Each period shows two bars side by side: <strong>your spend</strong>
+            {" "}on the left (colored, split by variance vs market) and{" "}
+            <strong>the market</strong> on the right (neutral grey reference).
+            The green portion of your bar is the renegotiation opportunity
+            (you&apos;re paying above market) and the red portion is the
             at-risk savings (you&apos;re paying below market — a renewal at
             market would cost more).
           </div>
@@ -146,10 +149,10 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
       <div className="timeline-totals">
         <div className="totals-block">
           <div className="totals-label">
-            <span className="dot above" />
+            <span className="dot success" />
             Renegotiation opportunity
           </div>
-          <div className="totals-value danger">
+          <div className="totals-value success">
             {formatDollars(data.horizonOpportunity)}
           </div>
           <div className="totals-meta">
@@ -160,10 +163,10 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
         </div>
         <div className="totals-block">
           <div className="totals-label">
-            <span className="dot below" />
+            <span className="dot danger" />
             At-risk savings
           </div>
-          <div className="totals-value success">
+          <div className="totals-value danger">
             {formatDollars(data.horizonAtRisk)}
           </div>
           <div className="totals-meta">
@@ -184,6 +187,30 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
             {formatDollars(data.horizonExpiringCurrent)} expiring ·{" "}
             {formatDollars(data.portfolioAnnualSpend)} total spend
           </div>
+        </div>
+      </div>
+
+      {/* Visual key — anchors the two-bar metaphor right above the chart so
+          users immediately read each pair as "your spend vs market". */}
+      <div className="sc-key" aria-hidden="true">
+        <div className="sc-key-pair">
+          <div className="sc-key-bar sc-key-bar-yours">
+            <span className="sc-key-seg sc-top-risk" />
+            <span className="sc-key-seg sc-top-current" />
+            <span className="sc-key-seg sc-top-savings" />
+          </div>
+          <div className="sc-key-label">Your spend</div>
+          <div className="sc-key-sub">
+            <span className="dot success" /> opportunity
+            <span className="dot danger" /> at-risk
+          </div>
+        </div>
+        <div className="sc-key-pair">
+          <div className="sc-key-bar sc-key-bar-market">
+            <span className="sc-key-seg sc-top-market" />
+          </div>
+          <div className="sc-key-label">Market</div>
+          <div className="sc-key-sub muted">reference at comp rates</div>
         </div>
       </div>
 
@@ -308,22 +335,25 @@ function CurrentStack({
   atH: number
   belowH: number
 }) {
-  // The "current" bar splits the actionable spend by variance vs market:
-  //   bottom → top: locked (grey) | at-risk savings (green) | at-market | opportunity (red)
-  // The vertical order intentionally puts the green floor first (positions
-  // currently below market — savings you'd lose at renewal) and the red cap
-  // on top (positions currently above market — what you can renegotiate
-  // down). Stacking is bottom-anchored using the running cumulative height.
-  const greenBottom = lockedH
-  const atBottom = greenBottom + belowH
-  const redBottom = atBottom + atH
+  // The "your spend" bar splits the actionable spend by variance vs market.
+  // Stacking convention (bottom → top):
+  //   locked (grey) | at-risk savings (red, below market) | at-market (neutral)
+  //   | renegotiation opportunity (green, above market)
+  // The red floor sits next to the locked baseline because below-market
+  // positions are "exposed" — at renewal you'd pay closer to market and
+  // those savings disappear. The green cap rides on top because that's
+  // money you can negotiate down. Stacks are bottom-anchored using the
+  // running cumulative height.
+  const redBottom = lockedH
+  const atBottom = redBottom + belowH
+  const greenBottom = atBottom + atH
   return (
     <div className="sc-stack" aria-hidden="true">
       <div className="sc-seg sc-seg-locked" style={{ height: `${lockedH}%` }} />
       {belowH > 0 && (
         <div
-          className="sc-seg sc-seg-top sc-top-savings"
-          style={{ height: `${belowH}%`, bottom: `${greenBottom}%` }}
+          className="sc-seg sc-seg-top sc-top-risk"
+          style={{ height: `${belowH}%`, bottom: `${redBottom}%` }}
         />
       )}
       {atH > 0 && (
@@ -334,8 +364,8 @@ function CurrentStack({
       )}
       {aboveH > 0 && (
         <div
-          className="sc-seg sc-seg-top sc-top-risk"
-          style={{ height: `${aboveH}%`, bottom: `${redBottom}%` }}
+          className="sc-seg sc-seg-top sc-top-savings"
+          style={{ height: `${aboveH}%`, bottom: `${greenBottom}%` }}
         />
       )}
     </div>
@@ -366,7 +396,7 @@ function MarketStack({
 function SpendTooltip({ bucket: b }: { bucket: SpendBucket }) {
   const netDollars = b.opportunity - b.atRisk
   const netClass =
-    netDollars > 0 ? "danger" : netDollars < 0 ? "success" : "muted"
+    netDollars > 0 ? "success" : netDollars < 0 ? "danger" : "muted"
   const netLabel =
     netDollars > 0
       ? "Net renegotiation upside"
@@ -379,15 +409,15 @@ function SpendTooltip({ bucket: b }: { bucket: SpendBucket }) {
       <div className="tl-tip-title">{b.longLabel}</div>
       <div className="tl-tip-row">
         <span className="lbl">
-          <span className="dot above" /> Opportunity (above market)
+          <span className="dot success" /> Opportunity (above market)
         </span>
-        <span className="val danger">{formatDollars(b.opportunity)}</span>
+        <span className="val success">{formatDollars(b.opportunity)}</span>
       </div>
       <div className="tl-tip-row">
         <span className="lbl">
-          <span className="dot below" /> At-risk savings (below market)
+          <span className="dot danger" /> At-risk savings (below market)
         </span>
-        <span className="val success">{formatDollars(b.atRisk)}</span>
+        <span className="val danger">{formatDollars(b.atRisk)}</span>
       </div>
       <div className="tl-tip-row">
         <span className="lbl">{netLabel}</span>
