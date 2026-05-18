@@ -9,6 +9,7 @@ import { PortfolioBreakdown } from "@/components/portfolio-breakdown"
 import {
   BreakdownPanel,
   type BreakdownPanelSelection,
+  type PulseBucket,
 } from "@/components/breakdown-panel"
 import { LeaseTable } from "@/components/lease-table"
 import { LeaseDetailPanel } from "@/components/lease-detail-panel"
@@ -200,6 +201,13 @@ export default function Page() {
     [],
   )
 
+  // Open the breakdown panel scoped to a pulse bucket (above / at / below
+  // market). Same surface as the period drill-down.
+  const handlePulseSelect = useCallback((bucket: PulseBucket) => {
+    setMethodologyOpen(false)
+    setBreakdownPanel({ kind: "pulse", bucket })
+  }, [])
+
   // Lease detail panel — stacks above breakdown panel, can also be opened
   // from the top-variance lists or any lease row in the table.
   const handleLeaseClick = useCallback((leaseId: string) => {
@@ -267,6 +275,7 @@ export default function Page() {
               stats={pulse}
               filters={filters}
               onFilterLowConfidence={filterLowConfidence}
+              onSelectBucket={handlePulseSelect}
             />
 
             <div style={{ height: 16 }} />

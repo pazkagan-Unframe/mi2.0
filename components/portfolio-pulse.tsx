@@ -3,11 +3,18 @@
 import type { Filters } from "@/lib/calculations"
 import { AT_MARKET_THRESHOLD, type PulseStats } from "@/lib/calculations"
 import { formatDollars } from "@/lib/format"
+import type { PulseBucket } from "./breakdown-panel"
 
 type Props = {
   stats: PulseStats
   filters: Filters
   onFilterLowConfidence: () => void
+  /**
+   * Drill into the side panel scoped to a pulse bucket — same surface as the
+   * renewal-timeline period drill-down. Optional so the component still
+   * renders standalone in any context that doesn't wire the panel.
+   */
+  onSelectBucket?: (bucket: PulseBucket) => void
 }
 
 /**
@@ -18,7 +25,12 @@ type Props = {
  * Aggregate $/SF averages are deliberately omitted — they conflate leases of
  * very different sizes and don't represent anything actionable. Dollars do.
  */
-export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props) {
+export function PortfolioPulse({
+  stats,
+  filters,
+  onFilterLowConfidence,
+  onSelectBucket,
+}: Props) {
   const { aboveCount, atCount, belowCount, noDataCount, benchmarkedCount } = stats
 
   const denom = benchmarkedCount > 0 ? benchmarkedCount : 1
@@ -28,6 +40,11 @@ export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props)
 
   const scopeLabel = buildScopeLabel(filters)
   const thresholdPct = Math.round(AT_MARKET_THRESHOLD * 100)
+
+  const drill = (bucket: PulseBucket, count: number) => {
+    if (!onSelectBucket || count === 0) return undefined
+    return () => onSelectBucket(bucket)
+  }
 
   return (
     <section className="pulse" role="region" aria-label="Portfolio pulse">
@@ -46,31 +63,43 @@ export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props)
 
       <div className="pulse-bar" aria-hidden="true">
         {aboveCount > 0 && (
-          <div
+          <button
+            type="button"
             className="pulse-seg above"
             style={{ width: `${abovePct}%` }}
-            title={`${aboveCount} above market`}
+            title={`${aboveCount} above market — click to drill in`}
+            onClick={drill("above", aboveCount)}
+            disabled={!onSelectBucket}
+            aria-label={`${aboveCount} leases above market`}
           >
             {abovePct >= 8 && <span className="pulse-seg-label">{aboveCount}</span>}
-          </div>
+          </button>
         )}
         {atCount > 0 && (
-          <div
+          <button
+            type="button"
             className="pulse-seg at"
             style={{ width: `${atPct}%` }}
-            title={`${atCount} at market`}
+            title={`${atCount} at market — click to drill in`}
+            onClick={drill("at", atCount)}
+            disabled={!onSelectBucket}
+            aria-label={`${atCount} leases at market`}
           >
             {atPct >= 8 && <span className="pulse-seg-label">{atCount}</span>}
-          </div>
+          </button>
         )}
         {belowCount > 0 && (
-          <div
+          <button
+            type="button"
             className="pulse-seg below"
             style={{ width: `${belowPct}%` }}
-            title={`${belowCount} below market`}
+            title={`${belowCount} below market — click to drill in`}
+            onClick={drill("below", belowCount)}
+            disabled={!onSelectBucket}
+            aria-label={`${belowCount} leases below market`}
           >
             {belowPct >= 8 && <span className="pulse-seg-label">{belowCount}</span>}
-          </div>
+          </button>
         )}
         {benchmarkedCount === 0 && (
           <div className="pulse-seg empty" style={{ width: "100%" }}>
@@ -80,31 +109,51 @@ export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props)
       </div>
 
       <div className="pulse-legend">
-        <div className="pulse-legend-item">
+        <button
+          type="button"
+          className="pulse-legend-item"
+          onClick={drill("above", aboveCount)}
+          disabled={!onSelectBucket || aboveCount === 0}
+        >
           <span className="dot above" />
           <span className="lbl">
             Above market <span className="muted">(&gt; +{thresholdPct}%)</span>
           </span>
           <span className="num">{aboveCount}</span>
-        </div>
-        <div className="pulse-legend-item">
+        </button>
+        <button
+          type="button"
+          className="pulse-legend-item"
+          onClick={drill("at", atCount)}
+          disabled={!onSelectBucket || atCount === 0}
+        >
           <span className="dot at" />
           <span className="lbl">
             At market <span className="muted">(±{thresholdPct}%)</span>
           </span>
           <span className="num">{atCount}</span>
-        </div>
-        <div className="pulse-legend-item">
+        </button>
+        <button
+          type="button"
+          className="pulse-legend-item"
+          onClick={drill("below", belowCount)}
+          disabled={!onSelectBucket || belowCount === 0}
+        >
           <span className="dot below" />
           <span className="lbl">
             Below market <span className="muted">(&lt; −{thresholdPct}%)</span>
           </span>
           <span className="num">{belowCount}</span>
-        </div>
+        </button>
       </div>
 
       <div className="pulse-numbers">
-        <div className="pulse-number opportunity">
+        <button
+          type="button"
+          className="pulse-number opportunity"
+          onClick={drill("above", aboveCount)}
+          disabled={!onSelectBucket || aboveCount === 0}
+        >
           <div className="pulse-number-label">Annual opportunity</div>
           <div className="pulse-number-value danger">
             {formatDollars(stats.annualOpportunity)}
@@ -112,8 +161,13 @@ export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props)
           <div className="pulse-number-meta">
             across {aboveCount} above-market {aboveCount === 1 ? "lease" : "leases"}
           </div>
-        </div>
-        <div className="pulse-number savings">
+        </button>
+        <button
+          type="button"
+          className="pulse-number savings"
+          onClick={drill("below", belowCount)}
+          disabled={!onSelectBucket || belowCount === 0}
+        >
           <div className="pulse-number-label">Annual locked-in savings</div>
           <div className="pulse-number-value success">
             {formatDollars(stats.annualSavings)}
@@ -121,7 +175,7 @@ export function PortfolioPulse({ stats, filters, onFilterLowConfidence }: Props)
           <div className="pulse-number-meta">
             across {belowCount} below-market {belowCount === 1 ? "lease" : "leases"}
           </div>
-        </div>
+        </button>
       </div>
 
       {(stats.lowConfidenceCount > 0 || stats.brokerOverrideCount > 0) && (

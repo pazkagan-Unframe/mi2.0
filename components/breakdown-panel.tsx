@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
-import { groupAndAggregate } from "@/lib/calculations"
+import { AT_MARKET_THRESHOLD, groupAndAggregate } from "@/lib/calculations"
 import { formatDollars, formatExpiry, formatPsf } from "@/lib/format"
 import { bucketKeyOf, type Granularity } from "@/lib/timeline"
 import { ScopePopover } from "./scope-popover"
 
 type GroupBy = "propertyType" | "submarket"
+export type PulseBucket = "above" | "at" | "below"
 
 export type BreakdownPanelSelection =
   | { kind: "group"; outerGroupBy: GroupBy; outerKey: string }
@@ -17,6 +18,7 @@ export type BreakdownPanelSelection =
       label: string
       granularity: Granularity
     }
+  | { kind: "pulse"; bucket: PulseBucket }
 
 type Props = {
   open: boolean
@@ -56,7 +58,7 @@ export function BreakdownPanel({
   onClearOverride,
 }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [periodInner, setPeriodInner] = useState<GroupBy>("submarket")
+  const [innerToggle, setInnerToggle] = useState<GroupBy>("submarket")
   const [popover, setPopover] = useState<PopoverState>({ open: false })
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function BreakdownPanel({
   // Reset expanded rows / inner toggle / popover whenever the panel selection changes.
   useEffect(() => {
     setExpanded(new Set())
-    setPeriodInner("submarket")
+    setInnerToggle("submarket")
     setPopover({ open: false })
   }, [selection])
 
@@ -103,9 +105,18 @@ export function BreakdownPanel({
       }
       return allRows.filter((r) => r.submarket === selection.outerKey)
     }
-    return allRows.filter(
-      (r) => bucketKeyOf(r.expiryDate, selection.granularity) === selection.bucketKey,
-    )
+    if (selection.kind === "period") {
+      return allRows.filter(
+        (r) => bucketKeyOf(r.expiryDate, selection.granularity) === selection.bucketKey,
+      )
+    }
+    // pulse: bucket leases by variance vs market.
+    return allRows.filter((r) => {
+      if (r.variancePct == null) return false
+      if (selection.bucket === "at") return Math.abs(r.variancePct) <= AT_MARKET_THRESHOLD
+      if (selection.bucket === "above") return r.variancePct > AT_MARKET_THRESHOLD
+      return r.variancePct < -AT_MARKET_THRESHOLD
+    })
   }, [allRows, selection])
 
   const innerGroupBy: GroupBy = useMemo(() => {
@@ -113,8 +124,9 @@ export function BreakdownPanel({
     if (selection.kind === "group") {
       return selection.outerGroupBy === "propertyType" ? "submarket" : "propertyType"
     }
-    return periodInner
-  }, [selection, periodInner])
+    // period and pulse both expose the inner toggle.
+    return innerToggle
+  }, [selection, innerToggle])
 
   const innerHeading =
     innerGroupBy === "submarket" ? "Sub-markets" : "Property types"
@@ -161,6 +173,43 @@ export function BreakdownPanel({
       ? rows.reduce((s, r) => s + Math.max(0, -(r.varianceAnnual ?? 0)), 0)
       : null
 
+  // Pulse view shows a single signed dollar headline matching the bucket
+  // (annual opportunity for above, annual locked-in savings for below, total
+  // at-market exposure for at).
+  const pulseDollars =
+    selection?.kind === "pulse"
+      ? rows.reduce((s, r) => s + Math.abs(r.varianceAnnual ?? 0), 0)
+      : null
+  const pulseSf =
+    selection?.kind === "pulse"
+      ? rows.reduce((s, r) => s + r.sf, 0)
+      : null
+
+  const pulseLabels: Record<PulseBucket, { eyebrow: string; title: string; tone: "danger" | "success" | "muted"; dollarsLabel: string }> = {
+    above: {
+      eyebrow: "Leases above market",
+      title: "Above-market exposure",
+      tone: "danger",
+      dollarsLabel: "Annual opportunity",
+    },
+    below: {
+      eyebrow: "Leases below market",
+      title: "Below-market positions",
+      tone: "success",
+      dollarsLabel: "Annual locked-in savings",
+    },
+    at: {
+      eyebrow: "Leases at market",
+      title: "At-market positions",
+      tone: "muted",
+      dollarsLabel: "Annual spend in scope",
+    },
+  }
+  const pulseAnnualSpend =
+    selection?.kind === "pulse"
+      ? rows.reduce((s, r) => s + r.currentRentPsf * r.sf, 0)
+      : null
+
   const eyebrowText =
     selection == null
       ? ""
@@ -168,14 +217,18 @@ export function BreakdownPanel({
         ? selection.outerGroupBy === "propertyType"
           ? `${innerHeading} within property type`
           : `${innerHeading} within sub-market`
-        : "Leases expiring in this period"
+        : selection.kind === "period"
+          ? "Leases expiring in this period"
+          : pulseLabels[selection.bucket].eyebrow
 
   const titleText =
     selection == null
       ? ""
       : selection.kind === "group"
         ? selection.outerKey
-        : selection.label
+        : selection.kind === "period"
+          ? selection.label
+          : pulseLabels[selection.bucket].title
 
   const outerTone =
     outerWeightedGapPsf == null
@@ -235,6 +288,38 @@ export function BreakdownPanel({
                 <div className="period-stat-value">{outerCount}</div>
               </div>
             </div>
+          ) : selection?.kind === "pulse" ? (
+            <div className="panel-period-summary">
+              <div className="period-stat">
+                <div className="period-stat-label">
+                  <span className={`dot ${selection.bucket}`} />{" "}
+                  {pulseLabels[selection.bucket].dollarsLabel}
+                </div>
+                <div
+                  className={`period-stat-value ${
+                    pulseLabels[selection.bucket].tone === "muted"
+                      ? ""
+                      : pulseLabels[selection.bucket].tone
+                  }`}
+                >
+                  {formatDollars(
+                    selection.bucket === "at"
+                      ? pulseAnnualSpend ?? 0
+                      : pulseDollars ?? 0,
+                  )}
+                </div>
+              </div>
+              <div className="period-stat">
+                <div className="period-stat-label">Leases</div>
+                <div className="period-stat-value">{outerCount}</div>
+              </div>
+              <div className="period-stat">
+                <div className="period-stat-label">SF in scope</div>
+                <div className="period-stat-value">
+                  {(pulseSf ?? 0).toLocaleString("en-US")}
+                </div>
+              </div>
+            </div>
           ) : (
             <p className="panel-subtitle">
               {outerCount} {outerCount === 1 ? "lease" : "leases"} ·{" "}
@@ -258,23 +343,23 @@ export function BreakdownPanel({
             </p>
           )}
 
-          {selection?.kind === "period" && (
+          {(selection?.kind === "period" || selection?.kind === "pulse") && (
             <div className="panel-inner-toggle" role="tablist" aria-label="Group by">
               <button
                 type="button"
                 role="tab"
-                className={`seg-opt${periodInner === "submarket" ? " on" : ""}`}
-                aria-selected={periodInner === "submarket"}
-                onClick={() => setPeriodInner("submarket")}
+                className={`seg-opt${innerToggle === "submarket" ? " on" : ""}`}
+                aria-selected={innerToggle === "submarket"}
+                onClick={() => setInnerToggle("submarket")}
               >
                 By sub-market
               </button>
               <button
                 type="button"
                 role="tab"
-                className={`seg-opt${periodInner === "propertyType" ? " on" : ""}`}
-                aria-selected={periodInner === "propertyType"}
-                onClick={() => setPeriodInner("propertyType")}
+                className={`seg-opt${innerToggle === "propertyType" ? " on" : ""}`}
+                aria-selected={innerToggle === "propertyType"}
+                onClick={() => setInnerToggle("propertyType")}
               >
                 By property type
               </button>
