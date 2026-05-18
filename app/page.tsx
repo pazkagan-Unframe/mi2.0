@@ -12,7 +12,6 @@ import {
 } from "@/components/breakdown-panel"
 import { LeaseTable } from "@/components/lease-table"
 import { LeaseDetailPanel } from "@/components/lease-detail-panel"
-import { MarketIntelligence } from "@/components/market-intelligence"
 import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
@@ -212,12 +211,6 @@ export default function Page() {
     [allRows, leaseDetailId],
   )
 
-  // Top-level page mode. "Portfolio" is the broker's own data; "Market browser"
-  // is unfiltered market context. Each mode has its own page body, but they
-  // share the global FilterBar — markets pre-select to the broker's portfolio
-  // by default and can be widened from inside Market browser.
-  const [pageMode, setPageMode] = useState<"portfolio" | "market">("portfolio")
-
   // When filters change, close any open panels — their data may be out of scope.
   useEffect(() => {
     setBreakdownPanel(null)
@@ -231,6 +224,16 @@ export default function Page() {
       <div className="container">
         <PageHeader onOpenMethodology={() => setMethodologyOpen(true)} />
 
+        <div className="section-tabs">
+          <div className="section-tab active">
+            Portfolio
+            <span className="count">{allRows.length}</span>
+          </div>
+          <div className="section-tab" style={{ opacity: 0.5, cursor: "not-allowed" }}>
+            Market browser
+          </div>
+        </div>
+
         <FilterBar
           filters={filters}
           onChange={setFilters}
@@ -239,90 +242,62 @@ export default function Page() {
           submarketCounts={submarketCounts}
         />
 
-        <div className="section-tabs" role="tablist" aria-label="Dashboard mode">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={pageMode === "portfolio"}
-            className={`section-tab${pageMode === "portfolio" ? " active" : ""}`}
-            onClick={() => setPageMode("portfolio")}
-          >
-            Portfolio
-            <span className="count">{filteredRows.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={pageMode === "market"}
-            className={`section-tab${pageMode === "market" ? " active" : ""}`}
-            onClick={() => setPageMode("market")}
-          >
-            Market analysis
-          </button>
+        <PortfolioPulse
+          stats={pulse}
+          filters={filters}
+          onFilterLowConfidence={filterLowConfidence}
+        />
+
+        <div style={{ height: 16 }} />
+        <SpendComposition
+          rows={filteredRows}
+          onSelectPeriod={handleTimelineSelect}
+        />
+
+        <div style={{ height: 16 }} />
+        <RenewalTimeline rows={filteredRows} onSelectPeriod={handleTimelineSelect} />
+
+        <div style={{ height: 16 }} />
+        <div className="row split-50-50">
+          <PortfolioBreakdown
+            rows={filteredRows}
+            groupBy="propertyType"
+            onSelect={(key) => handleBreakdownSelect("propertyType", key)}
+            selectedKey={
+              breakdownPanel?.kind === "group" &&
+              breakdownPanel.outerGroupBy === "propertyType"
+                ? breakdownPanel.outerKey
+                : null
+            }
+          />
+          <PortfolioBreakdown
+            rows={filteredRows}
+            groupBy="submarket"
+            onSelect={(key) => handleBreakdownSelect("submarket", key)}
+            selectedKey={
+              breakdownPanel?.kind === "group" &&
+              breakdownPanel.outerGroupBy === "submarket"
+                ? breakdownPanel.outerKey
+                : null
+            }
+          />
         </div>
 
-        {pageMode === "portfolio" ? (
-          <>
-            <PortfolioPulse
-              stats={pulse}
-              filters={filters}
-              onFilterLowConfidence={filterLowConfidence}
-            />
+        <div style={{ height: 16 }} />
+        <MarketMap rows={filteredRows} />
 
-            <div style={{ height: 16 }} />
-            <SpendComposition
-              rows={filteredRows}
-              onSelectPeriod={handleTimelineSelect}
-            />
+        <div style={{ height: 16 }} />
+        <TopVarianceLists rows={filteredRows} onLeaseClick={handleLeaseClick} />
 
-            <div style={{ height: 16 }} />
-            <RenewalTimeline rows={filteredRows} onSelectPeriod={handleTimelineSelect} />
-
-            <div style={{ height: 16 }} />
-            <div className="row split-50-50">
-              <PortfolioBreakdown
-                rows={filteredRows}
-                groupBy="propertyType"
-                onSelect={(key) => handleBreakdownSelect("propertyType", key)}
-                selectedKey={
-                  breakdownPanel?.kind === "group" &&
-                  breakdownPanel.outerGroupBy === "propertyType"
-                    ? breakdownPanel.outerKey
-                    : null
-                }
-              />
-              <PortfolioBreakdown
-                rows={filteredRows}
-                groupBy="submarket"
-                onSelect={(key) => handleBreakdownSelect("submarket", key)}
-                selectedKey={
-                  breakdownPanel?.kind === "group" &&
-                  breakdownPanel.outerGroupBy === "submarket"
-                    ? breakdownPanel.outerKey
-                    : null
-                }
-              />
-            </div>
-
-            <div style={{ height: 16 }} />
-            <MarketMap rows={filteredRows} />
-
-            <div style={{ height: 16 }} />
-            <TopVarianceLists rows={filteredRows} onLeaseClick={handleLeaseClick} />
-
-            <div style={{ height: 16 }} />
-            <LeaseTable
-              rows={filteredRows}
-              onPickScope={handlePickScope}
-              onSetManual={handleSetManual}
-              onPickSystemErv={handlePickSystemErv}
-              onClearOverride={handleClearOverride}
-              onLeaseClick={handleLeaseClick}
-            />
-          </>
-        ) : (
-          <MarketIntelligence portfolioRows={filteredRows} />
-        )}
+        <div style={{ height: 16 }} />
+        <LeaseTable
+          rows={filteredRows}
+          onPickScope={handlePickScope}
+          onSetManual={handleSetManual}
+          onPickSystemErv={handlePickSystemErv}
+          onClearOverride={handleClearOverride}
+          onLeaseClick={handleLeaseClick}
+        />
 
         <div className="page-footer">
           Per-lease overrides — manual estimates or alternate comp scopes — replace
