@@ -41,6 +41,14 @@ export type SpendBucket = BucketShell & {
   netDelta: number
   /** Of the expiring leases, how many lack a comparison value. */
   expiringWithoutComp: number
+  /** Sum of varianceAnnual for above-market expiring leases (renegotiation $). */
+  opportunity: number
+  /** Sum of |varianceAnnual| for below-market expiring leases (at-risk $). */
+  atRisk: number
+  /** Count of expiring leases above market. */
+  aboveCount: number
+  /** Count of expiring leases below market. */
+  belowCount: number
 }
 
 export type SpendComposition = {
@@ -55,6 +63,16 @@ export type SpendComposition = {
   horizonNetDelta: number
   /** Total leases with expiries inside the horizon. */
   horizonExpiringCount: number
+  /** Sum of opportunity across all buckets — above-market $ exposed to renewal. */
+  horizonOpportunity: number
+  /** Sum of atRisk across all buckets — below-market $ savings exposed to renewal. */
+  horizonAtRisk: number
+  /** Total above-market expiring leases. */
+  horizonAboveCount: number
+  /** Total below-market expiring leases. */
+  horizonBelowCount: number
+  /** Total expiring leases lacking comp data — excluded from variance bars. */
+  horizonWithoutComp: number
 }
 
 /** Build the spend composition for the given rows over the visible horizon. */
@@ -76,6 +94,10 @@ export function buildSpendComposition(
       totalMarket: 0,
       netDelta: 0,
       expiringWithoutComp: 0,
+      opportunity: 0,
+      atRisk: 0,
+      aboveCount: 0,
+      belowCount: 0,
     })
   }
 
@@ -101,7 +123,19 @@ export function buildSpendComposition(
         bucket.expiringCount += 1
         bucket.expiringSpendCurrent += annualCurrent
         bucket.expiringSpendMarket += annualMarket
-        if (r.comparisonPsf == null) bucket.expiringWithoutComp += 1
+        if (r.comparisonPsf == null) {
+          bucket.expiringWithoutComp += 1
+        } else if (r.varianceAnnual != null) {
+          // Same convention as the timeline: opportunity = above-market $,
+          // at-risk = |below-market $|. varianceAnnual is signed.
+          if (r.varianceAnnual > 0) {
+            bucket.opportunity += r.varianceAnnual
+            bucket.aboveCount += 1
+          } else if (r.varianceAnnual < 0) {
+            bucket.atRisk += -r.varianceAnnual
+            bucket.belowCount += 1
+          }
+        }
       } else {
         // Lease expires elsewhere (or outside horizon) → counts as locked
         // baseline for THIS bucket, in both current and market columns.
@@ -114,6 +148,11 @@ export function buildSpendComposition(
   let horizonExpiringCurrent = 0
   let horizonExpiringMarket = 0
   let horizonExpiringCount = 0
+  let horizonOpportunity = 0
+  let horizonAtRisk = 0
+  let horizonAboveCount = 0
+  let horizonBelowCount = 0
+  let horizonWithoutComp = 0
   const buckets: SpendBucket[] = []
   for (const shell of shells) {
     const b = map.get(shell.key)!
@@ -123,6 +162,11 @@ export function buildSpendComposition(
     horizonExpiringCurrent += b.expiringSpendCurrent
     horizonExpiringMarket += b.expiringSpendMarket
     horizonExpiringCount += b.expiringCount
+    horizonOpportunity += b.opportunity
+    horizonAtRisk += b.atRisk
+    horizonAboveCount += b.aboveCount
+    horizonBelowCount += b.belowCount
+    horizonWithoutComp += b.expiringWithoutComp
     buckets.push(b)
   }
 
@@ -133,5 +177,10 @@ export function buildSpendComposition(
     horizonExpiringMarket,
     horizonNetDelta: horizonExpiringCurrent - horizonExpiringMarket,
     horizonExpiringCount,
+    horizonOpportunity,
+    horizonAtRisk,
+    horizonAboveCount,
+    horizonBelowCount,
+    horizonWithoutComp,
   }
 }

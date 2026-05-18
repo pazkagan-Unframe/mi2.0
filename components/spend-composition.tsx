@@ -19,23 +19,20 @@ const HORIZONS: HorizonMonths[] = [12, 24, 36, 60]
 const NEAR_TERM_MONTHS = 12
 
 /**
- * Spend composition view — for every period in the horizon, shows two adjacent
- * stacked bars:
- *   • Column 1 (current): locked baseline + actionable spend at current rates.
- *   • Column 2 (market):  same locked baseline + actionable spend at market.
+ * Renewal & spend impact — merges the old Renewal timeline (opportunity vs
+ * at-risk variance bars) and Spend composition (current vs market paired
+ * bars) into a single view. Each period shows two adjacent stacked bars
+ * comparing current contract spend to what that same actionable slice would
+ * cost at market — and the totals strip surfaces the renegotiation
+ * opportunity, the at-risk savings, and the net.
  *
- * The bottoms are intentionally identical within a period (you can't
- * renegotiate non-expiring leases). The visible delta at the top is the
- * renegotiation upside (green) or at-risk savings (red) for that period.
+ * Modes:
+ *   • Full spend       — locked baseline (non-expiring) + actionable expiring
+ *                        spend. Honest absolute magnitudes.
+ *   • Actionable only  — hides locked baseline, rescales to expiring portion.
+ *                        Surfaces small periods you might otherwise miss.
  *
- * Clicking any column opens the breakdown side panel filtered to that period —
- * same drill-down as the renewal timeline beneath it.
- */
-/**
- * "full" shows the entire spend stack (locked + actionable) so absolute
- * magnitudes are honest. "actionable" hides the locked baseline and rescales
- * to the largest expiring portion, surfacing the current-vs-market delta on
- * periods where the renegotiable slice is small relative to total spend.
+ * Clicking any column opens the breakdown side panel scoped to that period.
  */
 type ViewMode = "full" | "actionable"
 
@@ -64,29 +61,27 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
     return Math.max(1, m * 1.04)
   }, [data.buckets, viewMode])
 
+  const netDollars = data.horizonOpportunity - data.horizonAtRisk
   const netLabel =
-    data.horizonNetDelta > 0
-      ? "Renegotiation upside"
-      : data.horizonNetDelta < 0
-        ? "At-risk savings"
+    netDollars > 0
+      ? "Net renegotiation upside"
+      : netDollars < 0
+        ? "Net at-risk savings"
         : "Net to market"
   const netClass =
-    data.horizonNetDelta > 0
-      ? "success"
-      : data.horizonNetDelta < 0
-        ? "danger"
-        : "muted"
+    netDollars > 0 ? "danger" : netDollars < 0 ? "success" : "muted"
 
   return (
     <section className="card timeline-card spend-card">
       <header className="timeline-header">
         <div>
-          <div className="card-title">Spend composition vs market</div>
+          <div className="card-title">Renewal &amp; spend impact</div>
           <div className="card-sub">
             Annual run-rate spend per period split into locked (non-expiring)
             and actionable (expiring). The market column shows what the
-            actionable portion would cost at comp rates — the visible delta at
-            the top is your renegotiation upside or at-risk savings.
+            actionable portion would cost at comp rates — green bars mean
+            current spend is above market (renegotiation opportunity), red
+            means below market (at-risk savings).
           </div>
         </div>
         <div className="timeline-controls">
@@ -144,30 +139,35 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
         </div>
       </header>
 
+      {/* Totals strip — single consolidated headline replacing the two cards
+          we used to show across the spend composition + renewal timeline. */}
       <div className="timeline-totals">
         <div className="totals-block">
           <div className="totals-label">
-            <span className="dot locked" />
-            Annual spend in scope
+            <span className="dot above" />
+            Renegotiation opportunity
           </div>
-          <div className="totals-value">
-            {formatDollars(data.portfolioAnnualSpend)}
+          <div className="totals-value danger">
+            {formatDollars(data.horizonOpportunity)}
           </div>
           <div className="totals-meta">
-            {rows.length} {rows.length === 1 ? "lease" : "leases"} · run-rate
+            {data.horizonAboveCount}{" "}
+            {data.horizonAboveCount === 1 ? "lease" : "leases"} above market ·
+            expiring within {horizon === 60 ? "5 yr" : `${horizon} mo`}
           </div>
         </div>
         <div className="totals-block">
           <div className="totals-label">
-            <span className="dot current" />
-            Expiring within horizon
+            <span className="dot below" />
+            At-risk savings
           </div>
-          <div className="totals-value">
-            {formatDollars(data.horizonExpiringCurrent)}
+          <div className="totals-value success">
+            {formatDollars(data.horizonAtRisk)}
           </div>
           <div className="totals-meta">
-            {data.horizonExpiringCount}{" "}
-            {data.horizonExpiringCount === 1 ? "lease" : "leases"} · actionable
+            {data.horizonBelowCount}{" "}
+            {data.horizonBelowCount === 1 ? "lease" : "leases"} below market ·
+            renewal at market would cost more
           </div>
         </div>
         <div className="totals-block">
@@ -176,10 +176,11 @@ export function SpendComposition({ rows, onSelectPeriod }: Props) {
             {netLabel}
           </div>
           <div className={`totals-value ${netClass}`}>
-            {formatDollars(Math.abs(data.horizonNetDelta), { sign: false })}
+            {formatDollars(Math.abs(netDollars), { sign: false })}
           </div>
           <div className="totals-meta">
-            At market: {formatDollars(data.horizonExpiringMarket)}
+            {formatDollars(data.horizonExpiringCurrent)} expiring ·{" "}
+            {formatDollars(data.portfolioAnnualSpend)} total spend
           </div>
         </div>
       </div>
@@ -359,12 +360,27 @@ function SpendTooltip({
         <span className="val">{formatDollars(b.expiringSpendMarket)}</span>
       </div>
       <div className="tl-tip-divider" />
+      {/* Variance breakdown — surfaces the same opportunity/at-risk numbers
+          that used to live in the separate Renewal timeline tooltip. */}
+      <div className="tl-tip-row">
+        <span className="lbl">
+          <span className="dot above" /> Opportunity
+        </span>
+        <span className="val danger">{formatDollars(b.opportunity)}</span>
+      </div>
+      <div className="tl-tip-row">
+        <span className="lbl">
+          <span className="dot below" /> At-risk savings
+        </span>
+        <span className="val success">{formatDollars(b.atRisk)}</span>
+      </div>
       <div className="tl-tip-row">
         <span className="lbl">{deltaLabel}</span>
         <span className={`val ${deltaClass}`}>
           {formatDollars(Math.abs(b.netDelta), { sign: false })}
         </span>
       </div>
+      <div className="tl-tip-divider" />
       <div className="tl-tip-row">
         <span className="lbl">Locked (non-expiring)</span>
         <span className="val muted">{formatDollars(b.lockedSpend)}</span>

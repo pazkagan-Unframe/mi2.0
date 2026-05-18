@@ -17,7 +17,6 @@ import { MarketIntelligence } from "@/components/market-intelligence"
 import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
-import { RenewalTimeline } from "@/components/renewal-timeline"
 import { SpendComposition } from "@/components/spend-composition"
 import type { Granularity } from "@/lib/timeline"
 import { SAMPLE_LEASES } from "@/lib/leases"
@@ -283,9 +282,6 @@ export default function Page() {
               rows={filteredRows}
               onSelectPeriod={handleTimelineSelect}
             />
-
-            <div style={{ height: 16 }} />
-            <RenewalTimeline rows={filteredRows} onSelectPeriod={handleTimelineSelect} />
 
             <div style={{ height: 16 }} />
             <div className="row split-50-50">
