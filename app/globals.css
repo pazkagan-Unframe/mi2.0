@@ -2085,13 +2085,14 @@ button.list-item.clickable:last-child { border-bottom: none; }
 }
 .tl-near-line .tl-near-label {
   position: absolute;
-  bottom: -16px;
+  top: -18px;
   right: 4px;
   font-size: 10px;
   color: var(--text-3);
   white-space: nowrap;
   background: var(--surface);
   padding: 0 4px;
+  border-radius: 3px;
 }
 .tl-tooltip {
   position: absolute;

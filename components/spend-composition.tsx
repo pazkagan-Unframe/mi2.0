@@ -42,7 +42,7 @@ type ViewMode = "full" | "actionable"
 export function SpendComposition({ rows, onSelectPeriod }: Props) {
   const [granularity, setGranularity] = useState<Granularity>("quarter")
   const [horizon, setHorizon] = useState<HorizonMonths>(24)
-  const [viewMode, setViewMode] = useState<ViewMode>("full")
+  const [viewMode, setViewMode] = useState<ViewMode>("actionable")
 
   const data = useMemo(
     () => buildSpendComposition(rows, granularity, horizon),
