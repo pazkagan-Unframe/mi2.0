@@ -24,9 +24,18 @@ import { MarketMap } from "@/components/market-map"
 
 type Tab = "portfolio-vs-market" | "market-analysis"
 
-type Props = { rows: LeaseRow[] }
+type Props = {
+  rows: LeaseRow[]
+  /**
+   * When this component is rendered as a top-level page mode (the "Market
+   * browser" tab), the outer card chrome and intro header are unnecessary —
+   * the page tab already frames it. Pass `chromeless` to render just the
+   * scope picker, sub-tabs and body.
+   */
+  chromeless?: boolean
+}
 
-export function MarketIntelligence({ rows }: Props) {
+export function MarketIntelligence({ rows, chromeless = false }: Props) {
   // Available markets / submarkets derived from the parent rows. Each market
   // carries the count of leases in scope so the picker can show density.
   const markets = useMemo(() => {
@@ -131,16 +140,18 @@ export function MarketIntelligence({ rows }: Props) {
         : `${selectedSubmarkets.size} submarkets selected`
 
   return (
-    <section className="card mi-card">
-      <header className="card-header mi-card-header">
-        <div>
-          <div className="card-title">Market intelligence</div>
-          <div className="card-sub">
-            Choose your markets and submarkets, then switch between portfolio
-            comparison and pure market analysis.
+    <section className={chromeless ? "mi-card mi-card-bare" : "card mi-card"}>
+      {!chromeless && (
+        <header className="card-header mi-card-header">
+          <div>
+            <div className="card-title">Market intelligence</div>
+            <div className="card-sub">
+              Choose your markets and submarkets, then switch between portfolio
+              comparison and pure market analysis.
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="mi-scope-bar">
         <ScopePicker
@@ -212,7 +223,7 @@ export function MarketIntelligence({ rows }: Props) {
           className={`mi-tab${tab === "portfolio-vs-market" ? " on" : ""}`}
           onClick={() => setTab("portfolio-vs-market")}
         >
-          <span className="mi-tab-label">Portfolio vs market</span>
+          <span className="mi-tab-label">Portfolio</span>
           <span className="mi-tab-sub">Your leases benchmarked against comps</span>
         </button>
         <button

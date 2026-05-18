@@ -2273,6 +2273,30 @@ button.list-item.clickable:last-child { border-bottom: none; }
    is local — it does not mutate the page-wide Filters — so brokers can drill
    into a specific city without losing their portfolio context above. */
 .mi-card { padding: 0; }
+/* Chromeless variant — used when MarketIntelligence is the entire page mode
+   (Market browser tab). Removes the outer card border so the scope picker
+   reads as part of the page rather than a nested card. */
+.mi-card-bare {
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.mi-card-bare .mi-scope-bar {
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: none;
+  padding-top: 0;
+  padding-bottom: 16px;
+}
+.mi-card-bare .mi-tabs {
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+}
+.mi-card-bare .mi-tab:first-child { padding-left: 0; }
+.mi-card-bare .mi-tab-body { padding-top: 16px; }
 .mi-card-header {
   padding: 18px 20px 14px;
   border-bottom: none;
