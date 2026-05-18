@@ -2267,6 +2267,293 @@ button.list-item.clickable:last-child { border-bottom: none; }
   .timeline-chart { min-height: 180px; }
 }
 
+/* MARKET INTELLIGENCE WRAPPER
+   Outer card holding the local scope picker (markets + submarkets) and a
+   two-tab switcher: "Portfolio vs market" and "Market analysis". The picker
+   is local — it does not mutate the page-wide Filters — so brokers can drill
+   into a specific city without losing their portfolio context above. */
+.mi-card { padding: 0; }
+.mi-card-header {
+  padding: 18px 20px 14px;
+  border-bottom: none;
+  display: block;
+}
+.mi-card-header .card-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+.mi-scope-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) auto;
+  gap: 16px;
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--border);
+  align-items: end;
+}
+.mi-scope-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.mi-scope-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mi-scope-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
+}
+.mi-scope-trigger:hover:not(.disabled) { border-color: var(--border-strong); }
+.mi-scope-trigger.open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+.mi-scope-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mi-scope-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.mi-scope-caret {
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.mi-scope-trigger.open .mi-scope-caret { transform: rotate(180deg); }
+
+.mi-scope-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px -8px rgba(31, 30, 26, 0.16),
+    0 4px 12px -4px rgba(31, 30, 26, 0.08);
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow: hidden;
+}
+.mi-scope-search {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mi-scope-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+}
+.mi-scope-search input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.mi-scope-actions {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mi-scope-action {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+}
+.mi-scope-action:hover { background: var(--accent-bg); }
+
+.mi-scope-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.mi-scope-empty {
+  padding: 16px 12px;
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+}
+.mi-scope-opt {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.mi-scope-opt:hover { background: var(--surface-2); }
+.mi-scope-opt.on { background: var(--accent-bg); }
+.mi-scope-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--surface);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.mi-scope-check[data-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.mi-scope-opt-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mi-scope-opt-count {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum';
+}
+
+.mi-scope-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  height: 36px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+.mi-scope-meta-num {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum';
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.mi-scope-meta-label {
+  font-size: 10.5px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.mi-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.mi-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--text-2);
+  margin-bottom: -1px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.mi-tab:first-child { padding-left: 0; }
+.mi-tab:hover { color: var(--text); }
+.mi-tab.on {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.mi-tab-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mi-tab-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+.mi-tab.on .mi-tab-sub { color: var(--text-2); }
+
+.mi-tab-body { padding: 0; }
+/* Children inside the wrapper render their own card chrome — strip the outer
+   border so we don't get a card-in-card look. */
+.mi-tab-body > .card {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.mi-empty {
+  padding: 48px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+@media (max-width: 720px) {
+  .mi-scope-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mi-scope-meta {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    align-items: flex-start;
+    padding-left: 0;
+    padding-top: 8px;
+    height: auto;
+  }
+  .mi-tab { padding: 12px 12px; }
+  .mi-tab:first-child { padding-left: 0; }
+  .mi-tabs { padding: 0 12px; overflow-x: auto; }
+}
+
 /* MARKET ANALYSIS — twelve-widget overview grid. Each widget is a borderless
    card that sits inside the outer .card container (so the section reads as
    one cohesive panel with a single shared header). */

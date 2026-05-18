@@ -12,8 +12,7 @@ import {
 } from "@/components/breakdown-panel"
 import { LeaseTable } from "@/components/lease-table"
 import { LeaseDetailPanel } from "@/components/lease-detail-panel"
-import { MarketMap } from "@/components/market-map"
-import { MarketAnalysis } from "@/components/market-analysis"
+import { MarketIntelligence } from "@/components/market-intelligence"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
 import { RenewalTimeline } from "@/components/renewal-timeline"
@@ -285,10 +284,7 @@ export default function Page() {
         </div>
 
         <div style={{ height: 16 }} />
-        <MarketAnalysis rows={filteredRows} />
-
-        <div style={{ height: 16 }} />
-        <MarketMap rows={filteredRows} />
+        <MarketIntelligence rows={filteredRows} />
 
         <div style={{ height: 16 }} />
         <TopVarianceLists rows={filteredRows} onLeaseClick={handleLeaseClick} />
