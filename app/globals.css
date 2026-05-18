@@ -1037,9 +1037,12 @@ button.pulse-seg:not(:disabled):focus-visible {
   outline: 2px solid var(--text);
   outline-offset: -2px;
 }
-.pulse-seg.above { background: var(--danger); }
+/* Color convention: above market = renegotiation opportunity (good news,
+   green); below market = at-risk savings (bad news, renewal will cost more,
+   red). Kept in sync with spend-composition / breakdown-panel. */
+.pulse-seg.above { background: var(--success); }
 .pulse-seg.at { background: var(--info); }
-.pulse-seg.below { background: var(--success); }
+.pulse-seg.below { background: var(--danger); }
 .pulse-seg.empty {
   background: var(--surface-2);
   color: var(--text-3);
@@ -1090,9 +1093,9 @@ button.pulse-legend-item:not(:disabled):focus-visible {
   border-radius: 2px;
   flex-shrink: 0;
 }
-.pulse-legend-item .dot.above { background: var(--danger); }
+.pulse-legend-item .dot.above { background: var(--success); }
 .pulse-legend-item .dot.at { background: var(--info); }
-.pulse-legend-item .dot.below { background: var(--success); }
+.pulse-legend-item .dot.below { background: var(--danger); }
 .pulse-legend-item .lbl { color: var(--text-2); }
 .pulse-legend-item .lbl .muted { color: var(--text-3); font-size: 11px; }
 .pulse-legend-item .num {
@@ -2014,8 +2017,8 @@ button.list-item.clickable:last-child { border-bottom: none; }
   border-radius: 2px;
   flex-shrink: 0;
 }
-.dot.above { background: var(--danger); }
-.dot.below { background: var(--success); }
+.dot.above { background: var(--success); }
+.dot.below { background: var(--danger); }
 .dot.grey { background: var(--text-3); }
 .dot.locked { background: color-mix(in srgb, var(--text-3) 55%, transparent); }
 .dot.current { background: var(--text-2); }

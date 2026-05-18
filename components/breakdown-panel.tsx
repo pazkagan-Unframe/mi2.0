@@ -185,18 +185,21 @@ export function BreakdownPanel({
       ? rows.reduce((s, r) => s + r.sf, 0)
       : null
 
+  // Color convention matches spend-composition + portfolio-pulse:
+  //   above market → renegotiation opportunity (success / green)
+  //   below market → at-risk savings (danger / red — savings disappear at renewal)
   const pulseLabels: Record<PulseBucket, { eyebrow: string; title: string; tone: "danger" | "success" | "muted"; dollarsLabel: string }> = {
     above: {
       eyebrow: "Leases above market",
-      title: "Above-market exposure",
-      tone: "danger",
-      dollarsLabel: "Annual opportunity",
+      title: "Renegotiation opportunity",
+      tone: "success",
+      dollarsLabel: "Annual renegotiation opportunity",
     },
     below: {
       eyebrow: "Leases below market",
-      title: "Below-market positions",
-      tone: "success",
-      dollarsLabel: "Annual locked-in savings",
+      title: "At-risk savings",
+      tone: "danger",
+      dollarsLabel: "Annual at-risk savings",
     },
     at: {
       eyebrow: "Leases at market",
@@ -271,7 +274,7 @@ export function BreakdownPanel({
                 <div className="period-stat-label">
                   <span className="dot above" /> Opportunity
                 </div>
-                <div className="period-stat-value danger">
+                <div className="period-stat-value success">
                   {formatDollars(periodOpportunity ?? 0)}
                 </div>
               </div>
@@ -279,7 +282,7 @@ export function BreakdownPanel({
                 <div className="period-stat-label">
                   <span className="dot below" /> At-risk savings
                 </div>
-                <div className="period-stat-value success">
+                <div className="period-stat-value danger">
                   {formatDollars(periodAtRisk ?? 0)}
                 </div>
               </div>

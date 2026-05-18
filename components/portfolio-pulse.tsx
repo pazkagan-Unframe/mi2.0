@@ -148,18 +148,24 @@ export function PortfolioPulse({
       </div>
 
       <div className="pulse-numbers">
+        {/* Color convention matches spend-composition + breakdown-panel:
+              above market → renegotiation opportunity (success / green)
+              below market → at-risk savings (danger / red)
+            "Locked-in savings" was the wrong frame — below-market leases
+            aren't safe, the savings disappear at renewal. */}
         <button
           type="button"
           className="pulse-number opportunity"
           onClick={drill("above", aboveCount)}
           disabled={!onSelectBucket || aboveCount === 0}
         >
-          <div className="pulse-number-label">Annual opportunity</div>
-          <div className="pulse-number-value danger">
+          <div className="pulse-number-label">Annual renegotiation opportunity</div>
+          <div className="pulse-number-value success">
             {formatDollars(stats.annualOpportunity)}
           </div>
           <div className="pulse-number-meta">
-            across {aboveCount} above-market {aboveCount === 1 ? "lease" : "leases"}
+            across {aboveCount} above-market {aboveCount === 1 ? "lease" : "leases"}{" "}
+            you can negotiate down
           </div>
         </button>
         <button
@@ -168,12 +174,13 @@ export function PortfolioPulse({
           onClick={drill("below", belowCount)}
           disabled={!onSelectBucket || belowCount === 0}
         >
-          <div className="pulse-number-label">Annual locked-in savings</div>
-          <div className="pulse-number-value success">
+          <div className="pulse-number-label">Annual at-risk savings</div>
+          <div className="pulse-number-value danger">
             {formatDollars(stats.annualSavings)}
           </div>
           <div className="pulse-number-meta">
-            across {belowCount} below-market {belowCount === 1 ? "lease" : "leases"}
+            across {belowCount} below-market {belowCount === 1 ? "lease" : "leases"}{" "}
+            — renewal at market would cost more
           </div>
         </button>
       </div>
