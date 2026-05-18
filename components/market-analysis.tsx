@@ -14,7 +14,7 @@
  * runtime weight and stays consistent with the existing card primitives.
  */
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
 import { formatDollars } from "@/lib/format"
 
@@ -167,7 +167,11 @@ function HBarList({
   return (
     <div className="ma-hbars">
       {data.map((d) => (
-        <div key={d.label} className="ma-hbar-row">
+        <div
+          key={d.label}
+          className="ma-hbar-row"
+          title={`${d.label}: ${fmt(d.value)} ${unit}`}
+        >
           <div className="ma-hbar-label">{d.label}</div>
           <div className="ma-hbar-track">
             <div
@@ -219,75 +223,136 @@ function LineChart({
   )
   const fmt = yFormat ?? ((n) => n.toFixed(1))
 
+  // Hovered x-index drives a vertical guide + an HTML overlay tooltip listing
+  // every series value at that x. Keeping the tooltip in HTML (not SVG) lets
+  // us reuse the existing tooltip styles and avoids viewBox scaling issues.
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const colWidthPct = 100 / xN
+
   return (
     <div className="ma-chart-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="ma-svg">
-        {ticks.map((t, i) => (
-          <g key={i}>
+      <div className="ma-chart-svg-wrap">
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="ma-svg">
+          {ticks.map((t, i) => (
+            <g key={i}>
+              <line
+                x1={PAD_L}
+                x2={W - PAD_R}
+                y1={y(t)}
+                y2={y(t)}
+                stroke="var(--border)"
+                strokeWidth={1}
+              />
+              <text
+                x={PAD_L - 6}
+                y={y(t)}
+                dy="0.32em"
+                textAnchor="end"
+                className="ma-axis"
+              >
+                {fmt(t)}
+              </text>
+            </g>
+          ))}
+          {series.map((s, si) => {
+            const linePath = s.values
+              .map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`)
+              .join(" ")
+            const areaPath =
+              fillFirst && si === 0
+                ? `${linePath} L ${x(s.values.length - 1)} ${y(yMin)} L ${x(0)} ${y(yMin)} Z`
+                : null
+            return (
+              <g key={s.name}>
+                {areaPath && (
+                  <path d={areaPath} fill={s.color} fillOpacity={0.12} />
+                )}
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {s.values.map((v, i) => (
+                  <circle
+                    key={i}
+                    cx={x(i)}
+                    cy={y(v)}
+                    r={hoverIdx === i ? 4 : 2.5}
+                    fill={s.color}
+                  />
+                ))}
+              </g>
+            )
+          })}
+          {hoverIdx !== null && (
             <line
-              x1={PAD_L}
-              x2={W - PAD_R}
-              y1={y(t)}
-              y2={y(t)}
-              stroke="var(--border)"
+              x1={x(hoverIdx)}
+              x2={x(hoverIdx)}
+              y1={PAD_T}
+              y2={H - PAD_B}
+              stroke="var(--border-strong, var(--text-3))"
               strokeWidth={1}
+              strokeDasharray="3 3"
+              opacity={0.6}
             />
+          )}
+          {xLabels.map((label, i) => (
             <text
-              x={PAD_L - 6}
-              y={y(t)}
-              dy="0.32em"
-              textAnchor="end"
+              key={i}
+              x={x(i)}
+              y={H - 8}
+              textAnchor="middle"
               className="ma-axis"
             >
-              {fmt(t)}
+              {label}
             </text>
-          </g>
-        ))}
-        {series.map((s, si) => {
-          const linePath = s.values
-            .map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`)
-            .join(" ")
-          const areaPath =
-            fillFirst && si === 0
-              ? `${linePath} L ${x(s.values.length - 1)} ${y(yMin)} L ${x(0)} ${y(yMin)} Z`
-              : null
-          return (
-            <g key={s.name}>
-              {areaPath && (
-                <path d={areaPath} fill={s.color} fillOpacity={0.12} />
-              )}
-              <path
-                d={linePath}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {s.values.map((v, i) => (
-                <circle
-                  key={i}
-                  cx={x(i)}
-                  cy={y(v)}
-                  r={2.5}
-                  fill={s.color}
-                />
-              ))}
-            </g>
-          )
-        })}
-        {xLabels.map((label, i) => (
-          <text
-            key={i}
-            x={x(i)}
-            y={H - 8}
-            textAnchor="middle"
-            className="ma-axis"
+          ))}
+          {/* Invisible hit zones — one per x-index — capture pointer position. */}
+          {xLabels.map((_, i) => (
+            <rect
+              key={`hit-${i}`}
+              x={x(i) - (W - PAD_L - PAD_R) / Math.max(1, xN - 1) / 2}
+              y={PAD_T}
+              width={(W - PAD_L - PAD_R) / Math.max(1, xN - 1)}
+              height={H - PAD_T - PAD_B}
+              fill="transparent"
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() =>
+                setHoverIdx((cur) => (cur === i ? null : cur))
+              }
+              style={{ cursor: "crosshair" }}
+            />
+          ))}
+        </svg>
+        {hoverIdx !== null && (
+          <div
+            className="ma-tooltip"
+            style={{
+              left: `calc(${(x(hoverIdx) / W) * 100}% )`,
+            }}
+            role="presentation"
           >
-            {label}
-          </text>
-        ))}
-      </svg>
+            <div className="ma-tip-title">{xLabels[hoverIdx]}</div>
+            {series.map((s) => (
+              <div key={s.name} className="ma-tip-row">
+                <span className="ma-tip-lbl">
+                  <span
+                    className="ma-swatch"
+                    style={{ background: s.color }}
+                  />
+                  {s.name}
+                </span>
+                <span className="ma-tip-val mono">
+                  {fmt(s.values[hoverIdx])}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       {series.length > 1 && (
         <div className="ma-legend">
           {series.map((s) => (
@@ -314,6 +379,7 @@ function Donut({
   const r = 44
   const cx = 100
   const cy = 100
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   let cum = 0
   const arcs = segments.map((s) => {
     const start = cum / total
@@ -335,20 +401,62 @@ function Donut({
   })
   return (
     <div className="ma-donut-wrap">
-      <svg viewBox="0 0 200 200" className="ma-donut">
-        {arcs.map((a) => (
-          <path key={a.label} d={a.d} fill={a.color} />
-        ))}
-        <text x={100} y={97} textAnchor="middle" className="ma-donut-total">
-          {total.toFixed(2)}
-        </text>
-        <text x={100} y={114} textAnchor="middle" className="ma-donut-unit">
-          MMSF
-        </text>
-      </svg>
+      <div className="ma-donut-svg-wrap">
+        <svg viewBox="0 0 200 200" className="ma-donut">
+          {arcs.map((a, i) => (
+            <path
+              key={a.label}
+              d={a.d}
+              fill={a.color}
+              opacity={hoverIdx === null || hoverIdx === i ? 1 : 0.45}
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() =>
+                setHoverIdx((cur) => (cur === i ? null : cur))
+              }
+              style={{ cursor: "pointer", transition: "opacity 0.12s ease" }}
+            />
+          ))}
+          <text x={100} y={97} textAnchor="middle" className="ma-donut-total">
+            {hoverIdx === null ? total.toFixed(2) : segments[hoverIdx].value.toFixed(2)}
+          </text>
+          <text x={100} y={114} textAnchor="middle" className="ma-donut-unit">
+            MMSF
+          </text>
+        </svg>
+        {hoverIdx !== null && (
+          <div className="ma-tooltip ma-tooltip-static" role="presentation">
+            <div className="ma-tip-title">{segments[hoverIdx].label}</div>
+            <div className="ma-tip-row">
+              <span className="ma-tip-lbl">
+                <span
+                  className="ma-swatch"
+                  style={{ background: segments[hoverIdx].color }}
+                />
+                Availability
+              </span>
+              <span className="ma-tip-val mono">
+                {segments[hoverIdx].value.toFixed(2)} MMSF
+              </span>
+            </div>
+            <div className="ma-tip-row">
+              <span className="ma-tip-lbl">Share</span>
+              <span className="ma-tip-val mono">
+                {((segments[hoverIdx].value / total) * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
       <ul className="ma-donut-legend">
-        {segments.map((s) => (
-          <li key={s.label}>
+        {segments.map((s, i) => (
+          <li
+            key={s.label}
+            onMouseEnter={() => setHoverIdx(i)}
+            onMouseLeave={() =>
+              setHoverIdx((cur) => (cur === i ? null : cur))
+            }
+            style={{ cursor: "pointer" }}
+          >
             <span className="ma-swatch" style={{ background: s.color }} />
             <span className="ma-donut-name">{s.label}</span>
             <span className="mono ma-donut-val">{s.value.toFixed(2)}</span>
@@ -607,7 +715,10 @@ function WidgetRentByClass({ scope, seed }: { scope: string; seed: string }) {
           <div key={d.label} className="ma-grouped-row">
             <div className="ma-grouped-label">Class {d.label}</div>
             <div className="ma-grouped-stack">
-              <div className="ma-grouped-pair">
+              <div
+                className="ma-grouped-pair"
+                title={`Class ${d.label} · Asking $${d.asking.toFixed(0)} / SF`}
+              >
                 <div className="ma-grouped-name">Asking</div>
                 <div className="ma-grouped-track">
                   <div
@@ -620,7 +731,10 @@ function WidgetRentByClass({ scope, seed }: { scope: string; seed: string }) {
                 </div>
                 <div className="ma-grouped-val mono">${d.asking.toFixed(0)}</div>
               </div>
-              <div className="ma-grouped-pair">
+              <div
+                className="ma-grouped-pair"
+                title={`Class ${d.label} · Achieved $${d.achieved.toFixed(0)} / SF`}
+              >
                 <div className="ma-grouped-name">Achieved</div>
                 <div className="ma-grouped-track">
                   <div
