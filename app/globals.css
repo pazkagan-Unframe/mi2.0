@@ -2266,3 +2266,219 @@ button.list-item.clickable:last-child { border-bottom: none; }
   .tl-bar { max-width: 12px; }
   .timeline-chart { min-height: 180px; }
 }
+
+/* MARKET ANALYSIS — twelve-widget overview grid. Each widget is a borderless
+   card that sits inside the outer .card container (so the section reads as
+   one cohesive panel with a single shared header). */
+.ma-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+.ma-card {
+  background: var(--surface);
+  padding: 16px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+}
+.ma-card-header { margin-bottom: 12px; }
+.ma-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+.ma-card-scope {
+  color: var(--text-3);
+  font-weight: 400;
+}
+.ma-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+}
+
+/* Horizontal bar list */
+.ma-hbars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ma-hbar-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 88px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.ma-hbar-label {
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ma-hbar-track {
+  height: 14px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ma-hbar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.18s ease;
+}
+.ma-hbar-value {
+  text-align: right;
+  font-size: 12px;
+  color: var(--text);
+}
+.ma-hbar-value .ma-unit {
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+/* SVG line / area charts */
+.ma-chart-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.ma-svg {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+.ma-axis {
+  font-size: 10px;
+  fill: var(--text-3);
+}
+.ma-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-2);
+  padding-top: 4px;
+}
+.ma-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ma-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Donut */
+.ma-donut-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.ma-donut {
+  width: 200px;
+  height: 200px;
+}
+.ma-donut-total {
+  font-size: 22px;
+  font-weight: 600;
+  fill: var(--text);
+  font-family: var(--font-mono);
+}
+.ma-donut-unit {
+  font-size: 10px;
+  fill: var(--text-3);
+  letter-spacing: 0.06em;
+}
+.ma-donut-legend {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.ma-donut-legend li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.ma-donut-name { color: var(--text-2); }
+.ma-donut-val { color: var(--text); }
+
+/* Compact table inside a market-analysis card */
+.ma-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.ma-table th,
+.ma-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.ma-table th {
+  font-weight: 500;
+  color: var(--text-3);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ma-table tbody tr:last-child td { border-bottom: none; }
+.ma-table .num { text-align: right; }
+
+/* Grouped bar pairs (rent by class) */
+.ma-grouped-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ma-grouped-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+.ma-grouped-label {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.ma-grouped-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ma-grouped-pair {
+  display: grid;
+  grid-template-columns: 60px 1fr 48px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.ma-grouped-name { color: var(--text-3); }
+.ma-grouped-track {
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ma-grouped-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+.ma-grouped-val { text-align: right; color: var(--text); }
+
+@media (max-width: 880px) {
+  .ma-grid { grid-template-columns: 1fr; }
+  .ma-donut-wrap { grid-template-columns: 1fr; justify-items: center; }
+}
