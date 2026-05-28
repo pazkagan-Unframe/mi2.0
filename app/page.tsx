@@ -18,6 +18,11 @@ import { MarketMap } from "@/components/market-map"
 import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
 import { SpendComposition } from "@/components/spend-composition"
+import {
+  CoverageChip,
+  MarketCoverageGate,
+} from "@/components/market-coverage-gate"
+import { READINESS_THRESHOLD, coverageStats } from "@/lib/coverage"
 import type { Granularity } from "@/lib/timeline"
 import { SAMPLE_LEASES } from "@/lib/leases"
 import { buildLeasesWithScopes } from "@/lib/scope-chain"
@@ -225,6 +230,27 @@ export default function Page() {
   // by default and can be widened from inside Market browser.
   const [pageMode, setPageMode] = useState<"portfolio" | "market">("portfolio")
 
+  // Readiness gate. Coverage is intentionally computed against the FULL
+  // portfolio (allRows), not the filtered view — filters shouldn't be able to
+  // mask missing comps. We default to "setup" when below threshold and let
+  // the broker explicitly choose to continue with partial data.
+  const coverage = useMemo(() => coverageStats(allRows), [allRows])
+  const [dashboardMode, setDashboardMode] = useState<"setup" | "ready">(
+    "setup",
+  )
+  // Auto-promote to "ready" once the broker hits the threshold; never
+  // auto-demote (so confirming a high-coverage portfolio doesn't yank the
+  // dashboard out from under them when they edit a lease).
+  useEffect(() => {
+    if (
+      dashboardMode === "setup" &&
+      coverage.readyPct >= READINESS_THRESHOLD &&
+      coverage.total > 0
+    ) {
+      setDashboardMode("ready")
+    }
+  }, [coverage.readyPct, coverage.total, dashboardMode])
+
   // When filters change, close any open panels — their data may be out of scope.
   useEffect(() => {
     setBreakdownPanel(null)
@@ -269,8 +295,29 @@ export default function Page() {
         </div>
 
         {pageMode === "portfolio" ? (
-          <>
-            <PortfolioPulse
+          dashboardMode === "setup" ? (
+            <MarketCoverageGate
+              rows={allRows}
+              coverage={coverage}
+              onContinueAnyway={() => setDashboardMode("ready")}
+              onPickScope={handlePickScope}
+              onSetManual={handleSetManual}
+              onPickSystemErv={handlePickSystemErv}
+              onClearOverride={handleClearOverride}
+            />
+          ) : (
+            <>
+              <div className="dashboard-coverage-strip">
+                <CoverageChip
+                  coverage={coverage}
+                  onOpenSetup={() => setDashboardMode("setup")}
+                />
+                <span className="dashboard-coverage-hint">
+                  Every chart below is built on these comps — keep them tight.
+                </span>
+              </div>
+
+              <PortfolioPulse
               stats={pulse}
               filters={filters}
               onFilterLowConfidence={filterLowConfidence}
@@ -324,7 +371,8 @@ export default function Page() {
               onClearOverride={handleClearOverride}
               onLeaseClick={handleLeaseClick}
             />
-          </>
+            </>
+          )
         ) : (
           <MarketIntelligence portfolioRows={filteredRows} />
         )}
