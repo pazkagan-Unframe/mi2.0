@@ -39,6 +39,15 @@ export function buildLeaseRow(
           ? "erv-system"
           : "scope-override"
     comparisonLabel = brokerOverride.sourceLabel
+  } else if (lease.systemErvPsf != null) {
+    // External ERV is the strongest signal we ship — when one exists for a
+    // lease and the broker hasn't manually picked something else, it
+    // becomes the default comparison. Treated as broker-confirmed for
+    // attention/coverage purposes (the broker's implicit choice is to
+    // accept the strongest source).
+    comparisonPsf = lease.systemErvPsf
+    comparisonSource = "erv-system"
+    comparisonLabel = "External ERV"
   } else if (defaultScope) {
     comparisonPsf = defaultScope.rentPsf
     comparisonSource = "market"

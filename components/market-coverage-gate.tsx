@@ -16,57 +16,9 @@ type SharedHandlers = {
   onClearOverride: (leaseId: string) => void
 }
 
-type ChipProps = SharedHandlers & {
-  coverage: CoverageStats
-  /** Switches the page back into setup mode. */
-  onOpenSetup: () => void
-}
-
-/**
- * Compact persistent chip rendered inside the dashboard header once coverage
- * is above READINESS_THRESHOLD. Shows the coverage % and offers a one-click
- * way back into Setup if the broker wants to keep tightening their data.
- */
-export function CoverageChip({
-  coverage,
-  onOpenSetup,
-}: Pick<ChipProps, "coverage" | "onOpenSetup">) {
-  const pct = Math.round(coverage.readyPct * 100)
-  const ready = coverage.attention === 0
-  return (
-    <button
-      type="button"
-      className={`coverage-chip${ready ? " ready" : " has-attention"}`}
-      onClick={onOpenSetup}
-      title={
-        ready
-          ? "All leases have a market estimate"
-          : `${coverage.attention} ${coverage.attention === 1 ? "lease needs" : "leases need"} attention`
-      }
-    >
-      <span className="coverage-chip-bar" aria-hidden="true">
-        <span
-          className="coverage-chip-bar-fill"
-          style={{ width: `${pct}%` }}
-        />
-      </span>
-      <span className="coverage-chip-label">
-        Coverage <strong>{pct}%</strong>
-      </span>
-      {!ready && (
-        <span className="coverage-chip-pill">
-          {coverage.attention} need{coverage.attention === 1 ? "s" : ""} attention
-        </span>
-      )}
-    </button>
-  )
-}
-
 type GateProps = SharedHandlers & {
   rows: LeaseRow[]
   coverage: CoverageStats
-  /** Allow brokers to skip into the dashboard even when coverage is low. */
-  onContinueAnyway: () => void
 }
 
 /**
@@ -98,7 +50,6 @@ type SetupFilter =
 export function MarketCoverageGate({
   rows,
   coverage,
-  onContinueAnyway,
   onPickScope,
   onSetManual,
   onPickSystemErv,
@@ -131,15 +82,18 @@ export function MarketCoverageGate({
   return (
     <section className="coverage-gate">
       <header className="coverage-gate-header">
-        <div className="coverage-gate-eyebrow">Setup · Market mapping</div>
+        <div className="coverage-gate-eyebrow">
+          Step 1 · Configure your portfolio
+        </div>
         <h2 className="coverage-gate-title">
           Confirm a market estimate on every lease
         </h2>
         <p className="coverage-gate-sub">
-          Every chart in this report is built on one number per lease — what
-          it would cost at market today. Use the table below to read your
-          portfolio side-by-side with the market and tighten the leases that
-          need attention. We unlock the dashboard at {thresholdPct}% coverage.
+          The dashboard and market analysis tabs are built on one number per
+          lease — what it would cost at market today. We default to the
+          external ERV when one exists; everywhere else, use the table below
+          to confirm a comp scope or type your own. The dashboard tab unlocks
+          at {thresholdPct}% coverage.
         </p>
       </header>
 
@@ -224,28 +178,17 @@ export function MarketCoverageGate({
         />
       </div>
 
-      <div className="coverage-actions">
-        <div className="coverage-actions-left">
-          {filter !== "all" && (
-            <button
-              type="button"
-              className="coverage-link"
-              onClick={() => setFilter("all")}
-            >
-              Show all leases
-            </button>
-          )}
-        </div>
-        <div className="coverage-actions-right">
+      {filter !== "all" && (
+        <div className="coverage-actions">
           <button
             type="button"
-            className="coverage-secondary"
-            onClick={onContinueAnyway}
+            className="coverage-link"
+            onClick={() => setFilter("all")}
           >
-            Continue to dashboard
+            Show all leases
           </button>
         </div>
-      </div>
+      )}
 
       <LeaseTable
         rows={filteredRows}

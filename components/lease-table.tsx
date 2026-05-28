@@ -294,10 +294,17 @@ function LeaseRowView({
           ? "danger"
           : "success"
 
+  // Treat ERV-by-default (no brokerOverride, ERV picked up automatically) as
+  // a labelled-but-not-broker-edited source: show the "ERV" pill so brokers
+  // know what they're seeing, but skip the row tint reserved for explicit
+  // broker actions.
+  const isErvDefault =
+    row.comparisonSource === "erv-system" && !row.brokerOverride
   const isOverridden =
     row.comparisonSource === "broker" ||
     row.comparisonSource === "scope-override" ||
     row.comparisonSource === "erv-system"
+  const isBrokerEdited = isOverridden && !isErvDefault
   const overridePillLabel =
     row.comparisonSource === "broker"
       ? "Your ERV"
@@ -361,7 +368,7 @@ function LeaseRowView({
 
   return (
     <tr
-      className={isOverridden ? "broker-row" : undefined}
+          className={isBrokerEdited ? "broker-row" : undefined}
       onClick={onLeaseClick ? handleRowClick : undefined}
       style={onLeaseClick ? { cursor: "pointer" } : undefined}
     >

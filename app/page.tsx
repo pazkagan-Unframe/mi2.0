@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { TopBar } from "@/components/top-bar"
 import { PageHeader } from "@/components/page-header"
 import { FilterBar } from "@/components/filter-bar"
@@ -19,7 +19,6 @@ import { TopVarianceLists } from "@/components/top-variance-lists"
 import { MethodologyPanel } from "@/components/methodology-panel"
 import { SpendComposition } from "@/components/spend-composition"
 import {
-  CoverageChip,
   MarketCoverageGate,
 } from "@/components/market-coverage-gate"
 import { READINESS_THRESHOLD, coverageStats } from "@/lib/coverage"
@@ -224,26 +223,23 @@ export default function Page() {
     [allRows, leaseDetailId],
   )
 
-  // Top-level page mode. "Portfolio" is the broker's own data; "Market browser"
-  // is unfiltered market context. Each mode has its own page body, but they
-  // share the global FilterBar — markets pre-select to the broker's portfolio
-  // by default and can be widened from inside Market browser.
-  const [pageMode, setPageMode] = useState<"portfolio" | "market">("portfolio")
-
-  // Readiness gate. Coverage is intentionally computed against the FULL
-  // portfolio (allRows), not the filtered view — filters shouldn't be able to
-  // mask missing comps. Initial mode depends on whether the broker already
-  // has a trustworthy portfolio: skip setup when coverage is high enough,
-  // start in setup otherwise. We do NOT auto-flip after that — switching
-  // modes is always an explicit broker choice via the chip / "Continue
-  // anyway" button, so they can revisit setup without the page yanking them
-  // back into the dashboard.
+  // Three-tab navigation. Configuration is the data-hygiene step (where the
+  // broker confirms market estimates per lease); Dashboard is the high-level
+  // portfolio-vs-market view; Market analysis is the broader market context.
+  // Coverage is computed against the FULL portfolio (allRows), not the
+  // filtered view — filters shouldn't be able to mask missing comps. We
+  // default new portfolios to Configuration; portfolios already past the
+  // readiness threshold land directly on Dashboard. We never auto-flip
+  // afterwards — tab choice is the broker's.
   const coverage = useMemo(() => coverageStats(allRows), [allRows])
-  const [dashboardMode, setDashboardMode] = useState<"setup" | "ready">(() =>
+  type Tab = "config" | "dashboard" | "market"
+  const [tab, setTab] = useState<Tab>(() =>
     coverage.readyPct >= READINESS_THRESHOLD && coverage.total > 0
-      ? "ready"
-      : "setup",
+      ? "dashboard"
+      : "config",
   )
+  const dashboardLocked =
+    coverage.readyPct < READINESS_THRESHOLD && coverage.total > 0
 
   // When filters change, close any open panels — their data may be out of scope.
   useEffect(() => {
@@ -266,52 +262,63 @@ export default function Page() {
           submarketCounts={submarketCounts}
         />
 
-        <div className="section-tabs" role="tablist" aria-label="Dashboard mode">
+        <div className="section-tabs" role="tablist" aria-label="Workspace">
           <button
             type="button"
             role="tab"
-            aria-selected={pageMode === "portfolio"}
-            className={`section-tab${pageMode === "portfolio" ? " active" : ""}`}
-            onClick={() => setPageMode("portfolio")}
+            aria-selected={tab === "config"}
+            className={`section-tab${tab === "config" ? " active" : ""}`}
+            onClick={() => setTab("config")}
           >
-            Portfolio
+            Configuration
+            {coverage.attention > 0 && (
+              <span
+                className="count"
+                title={`${coverage.attention} ${coverage.attention === 1 ? "lease needs" : "leases need"} attention`}
+              >
+                {coverage.attention}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "dashboard"}
+            className={`section-tab${tab === "dashboard" ? " active" : ""}`}
+            onClick={() => setTab("dashboard")}
+            disabled={dashboardLocked}
+            title={
+              dashboardLocked
+                ? `Dashboard unlocks at ${Math.round(READINESS_THRESHOLD * 100)}% coverage`
+                : undefined
+            }
+          >
+            Portfolio dashboard
             <span className="count">{filteredRows.length}</span>
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={pageMode === "market"}
-            className={`section-tab${pageMode === "market" ? " active" : ""}`}
-            onClick={() => setPageMode("market")}
+            aria-selected={tab === "market"}
+            className={`section-tab${tab === "market" ? " active" : ""}`}
+            onClick={() => setTab("market")}
           >
             Market analysis
           </button>
         </div>
 
-        {pageMode === "portfolio" ? (
-          dashboardMode === "setup" ? (
-            <MarketCoverageGate
-              rows={allRows}
-              coverage={coverage}
-              onContinueAnyway={() => setDashboardMode("ready")}
-              onPickScope={handlePickScope}
-              onSetManual={handleSetManual}
-              onPickSystemErv={handlePickSystemErv}
-              onClearOverride={handleClearOverride}
-            />
-          ) : (
-            <>
-              <div className="dashboard-coverage-strip">
-                <CoverageChip
-                  coverage={coverage}
-                  onOpenSetup={() => setDashboardMode("setup")}
-                />
-                <span className="dashboard-coverage-hint">
-                  Every chart below is built on these comps — keep them tight.
-                </span>
-              </div>
-
-              <PortfolioPulse
+        {tab === "config" ? (
+          <MarketCoverageGate
+            rows={allRows}
+            coverage={coverage}
+            onPickScope={handlePickScope}
+            onSetManual={handleSetManual}
+            onPickSystemErv={handlePickSystemErv}
+            onClearOverride={handleClearOverride}
+          />
+        ) : tab === "dashboard" ? (
+          <>
+            <PortfolioPulse
               stats={pulse}
               filters={filters}
               onFilterLowConfidence={filterLowConfidence}
@@ -365,8 +372,7 @@ export default function Page() {
               onClearOverride={handleClearOverride}
               onLeaseClick={handleLeaseClick}
             />
-            </>
-          )
+          </>
         ) : (
           <MarketIntelligence portfolioRows={filteredRows} />
         )}
