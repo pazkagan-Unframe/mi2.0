@@ -1,15 +1,13 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import type { LeaseRow } from "@/lib/types"
 import {
   READINESS_THRESHOLD,
-  attentionRows,
+  getLeaseAttention,
   type CoverageStats,
-  type LeaseAttention,
 } from "@/lib/coverage"
-import { formatPsf } from "@/lib/format"
-import { ScopePopover } from "./scope-popover"
+import { LeaseTable } from "./lease-table"
 
 type SharedHandlers = {
   onPickScope: (leaseId: string, scopeId: string) => void
@@ -72,11 +70,30 @@ type GateProps = SharedHandlers & {
 }
 
 /**
- * Full-width Setup surface shown when coverage < threshold. Hides the
- * dashboard until the broker has put a defensible market estimate on most of
- * their leases. Inline ScopePopover lets them fix each lease in place — same
- * surface they would normally use from the lease table — so this is a
- * focused workflow rather than a separate wizard.
+ * Setup view filter — toggled via the stat strip above the lease table.
+ *  - all:            every lease (default)
+ *  - missing:        no comparison rent at all
+ *  - fell-back:      system widened scope because narrow scope was thin
+ *  - low-confidence: small comp set
+ *  - erv-available:  externally-sourced ERV exists for this lease (best signal)
+ */
+type SetupFilter =
+  | "all"
+  | "missing"
+  | "fell-back"
+  | "low-confidence"
+  | "erv-available"
+
+/**
+ * Setup surface — shown before the dashboard. Redesigned around the broker's
+ * actual workflow: the lease table is the focal point (one row per lease,
+ * its current rent vs comparison rent), and the four cards above act as
+ * filters and explainers ("how much ERV context do we have?", "how many are
+ * low confidence and why?"). The original analytical surface was too dense
+ * for what is fundamentally a data-hygiene step.
+ *
+ * The popover / set-manual flow lives entirely inside LeaseTable, so brokers
+ * fix comps in the same row they read them — no separate triage list.
  */
 export function MarketCoverageGate({
   rows,
@@ -87,101 +104,123 @@ export function MarketCoverageGate({
   onPickSystemErv,
   onClearOverride,
 }: GateProps) {
-  const triageList = useMemo(() => attentionRows(rows), [rows])
-  const [filter, setFilter] = useState<
-    "all" | "missing" | "fell-back" | "low-confidence"
-  >("all")
-  const [popover, setPopover] = useState<{
-    leaseId: string
-    rect: DOMRect
-  } | null>(null)
+  const [filter, setFilter] = useState<SetupFilter>("all")
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return triageList
-    return triageList.filter((t) => t.attention.severity === filter)
-  }, [triageList, filter])
-
-  // Look up the latest derived row for the open popover so override changes
-  // are reflected without remounting.
-  const popoverRow = popover
-    ? rows.find((r) => r.id === popover.leaseId) ?? null
-    : null
+  const filteredRows = useMemo(() => {
+    switch (filter) {
+      case "all":
+        return rows
+      case "erv-available":
+        return rows.filter((r) => r.systemErvPsf != null)
+      case "missing":
+      case "fell-back":
+      case "low-confidence":
+        return rows.filter((r) => {
+          const a = getLeaseAttention(r)
+          return a?.severity === filter
+        })
+    }
+  }, [rows, filter])
 
   const pct = Math.round(coverage.readyPct * 100)
   const thresholdPct = Math.round(READINESS_THRESHOLD * 100)
+  const ervPct = coverage.total
+    ? Math.round((coverage.ervAvailableCount / coverage.total) * 100)
+    : 0
 
   return (
     <section className="coverage-gate">
       <header className="coverage-gate-header">
         <div className="coverage-gate-eyebrow">Setup · Market mapping</div>
         <h2 className="coverage-gate-title">
-          Map every lease to the market before you read the dashboard
+          Confirm a market estimate on every lease
         </h2>
         <p className="coverage-gate-sub">
-          Every chart in this report — opportunity, at-risk savings, the spend
-          impact view, the portfolio pulse — is built on a single number per
-          lease: what it would cost at market today. We hide the dashboard
-          until coverage is above {thresholdPct}% so you never read a chart
-          that&apos;s missing its spine.
+          Every chart in this report is built on one number per lease — what
+          it would cost at market today. Use the table below to read your
+          portfolio side-by-side with the market and tighten the leases that
+          need attention. We unlock the dashboard at {thresholdPct}% coverage.
         </p>
       </header>
 
-      <div className="coverage-meter">
-        <div className="coverage-meter-track" aria-hidden="true">
-          <div
-            className="coverage-meter-fill"
-            style={{ width: `${pct}%` }}
-            data-ready={coverage.readyPct >= READINESS_THRESHOLD}
-          />
-          <div
-            className="coverage-meter-threshold"
-            style={{ left: `${thresholdPct}%` }}
-            aria-hidden="true"
-          />
-        </div>
-        <div className="coverage-meter-labels">
-          <span className="coverage-meter-pct">
-            <strong>{pct}%</strong> ready
-          </span>
-          <span className="coverage-meter-counts">
-            {coverage.ready} of {coverage.total} leases ·{" "}
-            <span className="muted">target {thresholdPct}%</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="coverage-buckets">
-        <SeverityCard
+      <div className="setup-stats" role="tablist" aria-label="Filter leases">
+        <StatCard
+          tone="neutral"
+          label="Coverage"
+          primary={`${pct}%`}
+          secondary={`${coverage.ready} of ${coverage.total} leases ready`}
+          tertiary={`Target ${thresholdPct}%`}
+          active={filter === "all"}
+          onClick={() => setFilter("all")}
+        />
+        <StatCard
+          tone="success"
+          label="ERV context"
+          primary={`${coverage.ervAvailableCount}`}
+          secondary={`${ervPct}% of leases have an external ERV`}
+          tertiary={
+            coverage.ervPinnedCount > 0
+              ? `${coverage.ervPinnedCount} pinned as comparison`
+              : "Strongest signal — pin where it fits"
+          }
+          active={filter === "erv-available"}
+          onClick={() =>
+            setFilter((f) =>
+              f === "erv-available" ? "all" : "erv-available",
+            )
+          }
+          disabled={coverage.ervAvailableCount === 0}
+        />
+        <StatCard
+          tone="warning"
+          label="Low confidence"
+          primary={`${coverage.lowConfidenceCount + coverage.fellBackCount}`}
+          secondary={
+            coverage.fellBackCount > 0 && coverage.lowConfidenceCount > 0
+              ? `${coverage.fellBackCount} fell back · ${coverage.lowConfidenceCount} thin comps`
+              : coverage.fellBackCount > 0
+                ? `${coverage.fellBackCount} fell back to a wider scope`
+                : `${coverage.lowConfidenceCount} backed by a small comp set`
+          }
+          tertiary="Pin an ERV or pick a wider scope"
+          active={filter === "fell-back" || filter === "low-confidence"}
+          onClick={() =>
+            // Cycle through fell-back → low-confidence → all to expose both
+            // sub-categories without crowding the strip with extra cards.
+            setFilter((f) =>
+              f === "fell-back"
+                ? "low-confidence"
+                : f === "low-confidence"
+                  ? "all"
+                  : "fell-back",
+            )
+          }
+          disabled={
+            coverage.lowConfidenceCount + coverage.fellBackCount === 0
+          }
+          subFilter={
+            filter === "fell-back"
+              ? "Showing fell back"
+              : filter === "low-confidence"
+                ? "Showing thin comps"
+                : undefined
+          }
+        />
+        <StatCard
           tone="danger"
-          label="No market estimate"
-          count={coverage.missingCount}
-          hint="Comparison can't be computed yet"
+          label="No estimate"
+          primary={`${coverage.missingCount}`}
+          secondary={
+            coverage.missingCount === 0
+              ? "Every lease has a comparison rent"
+              : "Comparison can't be computed"
+          }
+          tertiary="Set a manual ERV or pick a scope"
           active={filter === "missing"}
           onClick={() =>
             setFilter((f) => (f === "missing" ? "all" : "missing"))
           }
-        />
-        <SeverityCard
-          tone="warning"
-          label="System fell back"
-          count={coverage.fellBackCount}
-          hint="Narrow scope had too few comps"
-          active={filter === "fell-back"}
-          onClick={() =>
-            setFilter((f) => (f === "fell-back" ? "all" : "fell-back"))
-          }
-        />
-        <SeverityCard
-          tone="info"
-          label="Low confidence"
-          count={coverage.lowConfidenceCount}
-          hint="Backed by a small comp set"
-          active={filter === "low-confidence"}
-          onClick={() =>
-            setFilter((f) =>
-              f === "low-confidence" ? "all" : "low-confidence",
-            )
-          }
+          disabled={coverage.missingCount === 0}
         />
       </div>
 
@@ -193,7 +232,7 @@ export function MarketCoverageGate({
               className="coverage-link"
               onClick={() => setFilter("all")}
             >
-              Show all {triageList.length}
+              Show all leases
             </button>
           )}
         </div>
@@ -203,120 +242,64 @@ export function MarketCoverageGate({
             className="coverage-secondary"
             onClick={onContinueAnyway}
           >
-            Continue with partial data
+            Continue to dashboard
           </button>
         </div>
       </div>
 
-      <ul className="coverage-list" role="list">
-        {filtered.length === 0 ? (
-          <li className="coverage-list-empty">
-            No leases match this severity — pick another bucket.
-          </li>
-        ) : (
-          filtered.map(({ row, attention }) => (
-            <AttentionRow
-              key={row.id}
-              row={row}
-              attention={attention}
-              onOpenPopover={(rect) => setPopover({ leaseId: row.id, rect })}
-            />
-          ))
-        )}
-      </ul>
-
-      {popover && popoverRow && (
-        <ScopePopover
-          row={popoverRow}
-          anchorRect={popover.rect}
-          onClose={() => setPopover(null)}
-          onPickScope={(scopeId) => onPickScope(popoverRow.id, scopeId)}
-          onClearOverride={() => onClearOverride(popoverRow.id)}
-          onSetManual={(estimate) => onSetManual(popoverRow.id, estimate)}
-          onPickSystemErv={() => onPickSystemErv(popoverRow.id)}
-        />
-      )}
+      <LeaseTable
+        rows={filteredRows}
+        onPickScope={onPickScope}
+        onSetManual={onSetManual}
+        onPickSystemErv={onPickSystemErv}
+        onClearOverride={onClearOverride}
+      />
     </section>
   )
 }
 
-function SeverityCard({
+/**
+ * Small filter card above the lease table. Reads as a stat (primary value +
+ * supporting text) and behaves as a toggle into the underlying filter, with
+ * a clear active state so brokers can see what they're scoped to.
+ */
+function StatCard({
   tone,
   label,
-  count,
-  hint,
+  primary,
+  secondary,
+  tertiary,
   active,
   onClick,
+  disabled,
+  subFilter,
 }: {
-  tone: "danger" | "warning" | "info"
+  tone: "neutral" | "success" | "warning" | "danger"
   label: string
-  count: number
-  hint: string
+  primary: string
+  secondary: string
+  tertiary?: string
   active: boolean
   onClick: () => void
+  disabled?: boolean
+  subFilter?: string
 }) {
   return (
     <button
       type="button"
-      className={`severity-card tone-${tone}${active ? " active" : ""}`}
+      role="tab"
+      aria-selected={active}
+      className={`stat-card tone-${tone}${active ? " active" : ""}`}
       onClick={onClick}
-      aria-pressed={active}
-      disabled={count === 0}
+      disabled={disabled}
     >
-      <div className="severity-card-count">{count}</div>
-      <div className="severity-card-label">{label}</div>
-      <div className="severity-card-hint">{hint}</div>
+      <div className="stat-card-head">
+        <span className="stat-card-label">{label}</span>
+        {subFilter && <span className="stat-card-subfilter">{subFilter}</span>}
+      </div>
+      <div className="stat-card-primary">{primary}</div>
+      <div className="stat-card-secondary">{secondary}</div>
+      {tertiary && <div className="stat-card-tertiary">{tertiary}</div>}
     </button>
-  )
-}
-
-function AttentionRow({
-  row,
-  attention,
-  onOpenPopover,
-}: {
-  row: LeaseRow
-  attention: LeaseAttention
-  onOpenPopover: (rect: DOMRect) => void
-}) {
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const toneClass =
-    attention.severity === "missing"
-      ? "danger"
-      : attention.severity === "fell-back"
-        ? "warning"
-        : "info"
-
-  return (
-    <li className="coverage-row">
-      <div className="coverage-row-main">
-        <div className="coverage-row-title">{row.address}</div>
-        <div className="coverage-row-meta">
-          {row.propertyType} · {row.submarket} ·{" "}
-          {row.sf.toLocaleString("en-US")} SF
-        </div>
-      </div>
-      <div className="coverage-row-rent">
-        <div className="coverage-row-rent-label">Current</div>
-        <div className="coverage-row-rent-value">
-          {formatPsf(row.currentRentPsf)}
-        </div>
-      </div>
-      <div className={`coverage-row-flag tone-${toneClass}`}>
-        <span className="coverage-row-flag-dot" aria-hidden="true" />
-        <span className="coverage-row-flag-text">{attention.reason}</span>
-      </div>
-      <button
-        ref={btnRef}
-        type="button"
-        className="coverage-row-action"
-        onClick={() => {
-          const rect = btnRef.current?.getBoundingClientRect()
-          if (rect) onOpenPopover(rect)
-        }}
-      >
-        {attention.severity === "missing" ? "Set estimate" : "Review"}
-      </button>
-    </li>
   )
 }

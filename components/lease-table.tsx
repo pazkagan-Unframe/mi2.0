@@ -9,6 +9,7 @@ import {
   formatPsf,
   monthsUntil,
 } from "@/lib/format"
+import { confidenceReason, getLeaseAttention } from "@/lib/coverage"
 import { ScopePopover } from "./scope-popover"
 
 type Props = {
@@ -345,6 +346,19 @@ function LeaseRowView({
               }
             : { label: row.comparisonLabel, showConf: true }
 
+  // Inline explanation for weak comps. We keep this separate from subInfo
+  // because the reason should be rendered with attention-grabbing colour
+  // (warning/danger), not with the muted scope/comp metadata. Returns null
+  // when the row's comp is trustworthy.
+  const reason = confidenceReason(row)
+  const reasonSeverity = getLeaseAttention(row)?.severity ?? null
+  const reasonClass =
+    reasonSeverity === "missing"
+      ? "danger"
+      : reasonSeverity === "fell-back"
+        ? "warning"
+        : "info"
+
   return (
     <tr
       className={isOverridden ? "broker-row" : undefined}
@@ -395,6 +409,15 @@ function LeaseRowView({
                 {isOverridden && (
                   <span className="broker-pill">{overridePillLabel}</span>
                 )}
+                {row.systemErvPsf != null &&
+                  row.comparisonSource !== "erv-system" && (
+                    <span
+                      className="erv-pill"
+                      title="External ERV available — pin it as the comparison rent"
+                    >
+                      ERV available
+                    </span>
+                  )}
               </span>
               <span
                 className="meta"
@@ -410,9 +433,21 @@ function LeaseRowView({
                   </>
                 )}
               </span>
+              {reason && (
+                <span className={`market-cell-reason ${reasonClass}`}>
+                  {reason}
+                </span>
+              )}
             </>
           ) : (
-            <span style={{ color: "var(--text-3)", fontSize: 12 }}>No comp set</span>
+            <>
+              <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+                No comp set
+              </span>
+              <span className="market-cell-reason danger">
+                {reason ?? "No comp — needs your input"}
+              </span>
+            </>
           )}
         </button>
       </td>

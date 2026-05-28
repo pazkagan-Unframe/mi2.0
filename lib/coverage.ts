@@ -80,6 +80,16 @@ export type CoverageStats = {
   missingCount: number
   fellBackCount: number
   lowConfidenceCount: number
+  /**
+   * Leases for which we have an externally-sourced ERV available — the
+   * strongest signal we ship. Pinned = broker already promoted it as the
+   * comparison rent. Available-but-unpinned = potential upgrade for that
+   * lease's comp.
+   */
+  ervAvailableCount: number
+  ervPinnedCount: number
+  /** Any broker override in place (manual / scope / erv-system). */
+  confirmedCount: number
 }
 
 export function coverageStats(rows: LeaseRow[]): CoverageStats {
@@ -87,8 +97,21 @@ export function coverageStats(rows: LeaseRow[]): CoverageStats {
   let missingCount = 0
   let fellBackCount = 0
   let lowConfidenceCount = 0
+  let ervAvailableCount = 0
+  let ervPinnedCount = 0
+  let confirmedCount = 0
 
   for (const r of rows) {
+    if (r.systemErvPsf != null) ervAvailableCount += 1
+    if (r.comparisonSource === "erv-system") ervPinnedCount += 1
+    if (
+      r.comparisonSource === "broker" ||
+      r.comparisonSource === "scope-override" ||
+      r.comparisonSource === "erv-system"
+    ) {
+      confirmedCount += 1
+    }
+
     const a = getLeaseAttention(r)
     if (a == null) {
       ready += 1
@@ -108,7 +131,36 @@ export function coverageStats(rows: LeaseRow[]): CoverageStats {
     missingCount,
     fellBackCount,
     lowConfidenceCount,
+    ervAvailableCount,
+    ervPinnedCount,
+    confirmedCount,
   }
+}
+
+/**
+ * Inline, broker-friendly explanation of why a row's comp is weak. Returns
+ * null when the row is ready — i.e., the comp is trustworthy. Used by the
+ * lease table to surface "why" right next to the market $/SF without
+ * forcing brokers to open a popover. Slightly more specific than the
+ * setup-list hints because it lands inline.
+ */
+export function confidenceReason(row: LeaseRow): string | null {
+  const a = getLeaseAttention(row)
+  if (!a) return null
+  if (a.severity === "missing") return "No comp — needs your input"
+  if (a.severity === "fell-back") {
+    // Show the comp count of the resolved scope when available so the broker
+    // can see how thin the wider scope is.
+    const activeScope = row.scopes.find((s) => s.id === row.defaultScopeId)
+    if (activeScope) {
+      return `Fell back to ${activeScope.label.toLowerCase()} (${activeScope.compCount} ${
+        activeScope.compCount === 1 ? "comp" : "comps"
+      }) — narrow scope was too thin`
+    }
+    return "System fell back to a wider scope — narrow scope was too thin"
+  }
+  // low-confidence
+  return "Small comp set — pin an ERV or pick a wider scope"
 }
 
 /**

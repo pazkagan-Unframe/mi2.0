@@ -3078,63 +3078,27 @@ button.list-item.clickable:last-child { border-bottom: none; }
   text-wrap: pretty;
 }
 
-.coverage-meter {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.coverage-meter-track {
-  position: relative;
-  height: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.coverage-meter-fill {
-  height: 100%;
-  background: var(--warning);
-  transition: width 0.3s ease, background 0.3s ease;
-}
-.coverage-meter-fill[data-ready="true"] {
-  background: var(--success);
-}
-.coverage-meter-threshold {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 1px;
-  background: var(--text-3);
-  opacity: 0.6;
-}
-.coverage-meter-labels {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 12px;
-  color: var(--text-2);
-  font-feature-settings: 'tnum';
-}
-.coverage-meter-pct strong {
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
-}
-.coverage-meter-counts .muted {
-  color: var(--text-3);
-}
-
-.coverage-buckets {
+/* Stat strip — four filter cards above the lease table. Each card is a
+   mini-dashboard (Coverage / ERV context / Low confidence / No estimate)
+   that doubles as a tab into a filtered view of the lease table below.
+   Cards share a structure (label · primary · secondary · tertiary) and
+   differ only in tone, which paints the primary number. */
+.setup-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
-@media (max-width: 720px) {
-  .coverage-buckets {
+@media (max-width: 960px) {
+  .setup-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .setup-stats {
     grid-template-columns: 1fr;
   }
 }
-.severity-card {
+.stat-card {
   text-align: left;
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -3146,37 +3110,66 @@ button.list-item.clickable:last-child { border-bottom: none; }
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.12s ease, background 0.12s ease;
+  min-height: 110px;
 }
-.severity-card:disabled {
+.stat-card:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.severity-card:not(:disabled):hover {
+.stat-card:not(:disabled):hover {
   border-color: var(--text-3);
 }
-.severity-card.active {
+.stat-card.active {
   border-color: var(--text);
   background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
-.severity-card-count {
-  font-size: 22px;
+.stat-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.stat-card-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.stat-card-subfilter {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.stat-card.active .stat-card-subfilter {
+  background: var(--surface);
+}
+.stat-card-primary {
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-feature-settings: 'tnum';
   color: var(--text);
+  line-height: 1.1;
+  margin-top: 2px;
 }
-.severity-card-label {
+.stat-card-secondary {
   font-size: 12.5px;
-  font-weight: 600;
   color: var(--text);
 }
-.severity-card-hint {
+.stat-card-tertiary {
   font-size: 11.5px;
   color: var(--text-3);
 }
-.severity-card.tone-danger .severity-card-count { color: var(--danger); }
-.severity-card.tone-warning .severity-card-count { color: var(--warning); }
-.severity-card.tone-info .severity-card-count { color: var(--info); }
+.stat-card.tone-success .stat-card-primary { color: var(--success); }
+.stat-card.tone-warning .stat-card-primary { color: var(--warning); }
+.stat-card.tone-danger .stat-card-primary { color: var(--danger); }
 
 .coverage-actions {
   display: flex;
@@ -3185,9 +3178,7 @@ button.list-item.clickable:last-child { border-bottom: none; }
   gap: 12px;
   font-size: 12px;
 }
-.coverage-actions-left {
-  color: var(--text-3);
-}
+.coverage-actions-left { color: var(--text-3); }
 .coverage-link {
   background: none;
   border: none;
@@ -3213,100 +3204,34 @@ button.list-item.clickable:last-child { border-bottom: none; }
   color: var(--text);
 }
 
-.coverage-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
-  max-height: 480px;
-  overflow-y: auto;
-}
-.coverage-list-empty {
-  padding: 24px;
-  text-align: center;
-  color: var(--text-3);
-  font-size: 13px;
-}
-.coverage-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 16px;
-  align-items: center;
-  padding: 12px 4px;
-  border-bottom: 1px solid var(--border);
-}
-.coverage-row:last-child { border-bottom: none; }
-.coverage-row-main { min-width: 0; }
-.coverage-row-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.coverage-row-meta {
-  font-size: 11.5px;
-  color: var(--text-3);
-  margin-top: 2px;
-}
-.coverage-row-rent {
-  text-align: right;
-  font-feature-settings: 'tnum';
-}
-.coverage-row-rent-label {
+/* Inline reason on a lease's market $/SF cell. Anchored to the cell so
+   brokers see *why* a comp is weak without opening the popover. */
+.market-cell-reason {
+  display: block;
   font-size: 10.5px;
-  color: var(--text-3);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  margin-top: 2px;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  text-align: right;
 }
-.coverage-row-rent-value {
-  font-size: 13px;
-  color: var(--text);
-}
-.coverage-row-flag {
+.market-cell-reason.danger { color: var(--danger); }
+.market-cell-reason.warning { color: var(--warning); }
+.market-cell-reason.info { color: var(--info); }
+
+/* External-ERV-available pill — surfaces the strongest signal we have for a
+   lease so brokers can promote it without opening the popover first. */
+.erv-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-.coverage-row-flag-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.coverage-row-flag.tone-danger .coverage-row-flag-dot { background: var(--danger); }
-.coverage-row-flag.tone-warning .coverage-row-flag-dot { background: var(--warning); }
-.coverage-row-flag.tone-info .coverage-row-flag-dot { background: var(--info); }
-.coverage-row-action {
-  background: var(--text);
-  color: var(--surface);
-  border: 1px solid var(--text);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font: inherit;
-  font-size: 12.5px;
+  font-size: 10px;
   font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.12s ease;
-}
-.coverage-row-action:hover { opacity: 0.85; }
-@media (max-width: 720px) {
-  .coverage-row {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "main rent"
-      "flag action";
-  }
-  .coverage-row-main { grid-area: main; }
-  .coverage-row-rent { grid-area: rent; }
-  .coverage-row-flag { grid-area: flag; }
-  .coverage-row-action { grid-area: action; justify-self: end; }
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 /* Persistent chip — anchors readiness inside the dashboard. */
