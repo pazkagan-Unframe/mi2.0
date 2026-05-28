@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { TopBar } from "@/components/top-bar"
 import { PageHeader } from "@/components/page-header"
 import { FilterBar } from "@/components/filter-bar"
@@ -232,24 +232,18 @@ export default function Page() {
 
   // Readiness gate. Coverage is intentionally computed against the FULL
   // portfolio (allRows), not the filtered view — filters shouldn't be able to
-  // mask missing comps. We default to "setup" when below threshold and let
-  // the broker explicitly choose to continue with partial data.
+  // mask missing comps. Initial mode depends on whether the broker already
+  // has a trustworthy portfolio: skip setup when coverage is high enough,
+  // start in setup otherwise. We do NOT auto-flip after that — switching
+  // modes is always an explicit broker choice via the chip / "Continue
+  // anyway" button, so they can revisit setup without the page yanking them
+  // back into the dashboard.
   const coverage = useMemo(() => coverageStats(allRows), [allRows])
-  const [dashboardMode, setDashboardMode] = useState<"setup" | "ready">(
-    "setup",
+  const [dashboardMode, setDashboardMode] = useState<"setup" | "ready">(() =>
+    coverage.readyPct >= READINESS_THRESHOLD && coverage.total > 0
+      ? "ready"
+      : "setup",
   )
-  // Auto-promote to "ready" once the broker hits the threshold; never
-  // auto-demote (so confirming a high-coverage portfolio doesn't yank the
-  // dashboard out from under them when they edit a lease).
-  useEffect(() => {
-    if (
-      dashboardMode === "setup" &&
-      coverage.readyPct >= READINESS_THRESHOLD &&
-      coverage.total > 0
-    ) {
-      setDashboardMode("ready")
-    }
-  }, [coverage.readyPct, coverage.total, dashboardMode])
 
   // When filters change, close any open panels — their data may be out of scope.
   useEffect(() => {

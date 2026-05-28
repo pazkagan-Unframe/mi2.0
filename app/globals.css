@@ -3032,3 +3032,338 @@ button.list-item.clickable:last-child { border-bottom: none; }
   font-size: 11.5px;
   font-feature-settings: 'tnum';
 }
+
+/* ---------------------------------------------------------------------------
+   Market coverage gate
+   Setup surface shown before the dashboard, plus the persistent chip used
+   inside the dashboard once coverage is above threshold. The visual language
+   borrows from the existing card / pill / dot vocabulary so it doesn't feel
+   like a separate product. */
+.coverage-gate {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px 24px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.coverage-gate-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 720px;
+}
+.coverage-gate-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.coverage-gate-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0;
+  text-wrap: balance;
+}
+.coverage-gate-sub {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-2);
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.coverage-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.coverage-meter-track {
+  position: relative;
+  height: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.coverage-meter-fill {
+  height: 100%;
+  background: var(--warning);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.coverage-meter-fill[data-ready="true"] {
+  background: var(--success);
+}
+.coverage-meter-threshold {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--text-3);
+  opacity: 0.6;
+}
+.coverage-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--text-2);
+  font-feature-settings: 'tnum';
+}
+.coverage-meter-pct strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.coverage-meter-counts .muted {
+  color: var(--text-3);
+}
+
+.coverage-buckets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .coverage-buckets {
+    grid-template-columns: 1fr;
+  }
+}
+.severity-card {
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.severity-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.severity-card:not(:disabled):hover {
+  border-color: var(--text-3);
+}
+.severity-card.active {
+  border-color: var(--text);
+  background: var(--surface);
+}
+.severity-card-count {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum';
+  color: var(--text);
+}
+.severity-card-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.severity-card-hint {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.severity-card.tone-danger .severity-card-count { color: var(--danger); }
+.severity-card.tone-warning .severity-card-count { color: var(--warning); }
+.severity-card.tone-info .severity-card-count { color: var(--info); }
+
+.coverage-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.coverage-actions-left {
+  color: var(--text-3);
+}
+.coverage-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+.coverage-link:hover { text-decoration: underline; }
+.coverage-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.coverage-secondary:hover {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+
+.coverage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  max-height: 480px;
+  overflow-y: auto;
+}
+.coverage-list-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+.coverage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.coverage-row:last-child { border-bottom: none; }
+.coverage-row-main { min-width: 0; }
+.coverage-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.coverage-row-meta {
+  font-size: 11.5px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.coverage-row-rent {
+  text-align: right;
+  font-feature-settings: 'tnum';
+}
+.coverage-row-rent-label {
+  font-size: 10.5px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.coverage-row-rent-value {
+  font-size: 13px;
+  color: var(--text);
+}
+.coverage-row-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.coverage-row-flag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.coverage-row-flag.tone-danger .coverage-row-flag-dot { background: var(--danger); }
+.coverage-row-flag.tone-warning .coverage-row-flag-dot { background: var(--warning); }
+.coverage-row-flag.tone-info .coverage-row-flag-dot { background: var(--info); }
+.coverage-row-action {
+  background: var(--text);
+  color: var(--surface);
+  border: 1px solid var(--text);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+.coverage-row-action:hover { opacity: 0.85; }
+@media (max-width: 720px) {
+  .coverage-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "main rent"
+      "flag action";
+  }
+  .coverage-row-main { grid-area: main; }
+  .coverage-row-rent { grid-area: rent; }
+  .coverage-row-flag { grid-area: flag; }
+  .coverage-row-action { grid-area: action; justify-self: end; }
+}
+
+/* Persistent chip — anchors readiness inside the dashboard. */
+.dashboard-coverage-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.dashboard-coverage-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.coverage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.coverage-chip:hover { border-color: var(--text-3); }
+.coverage-chip-bar {
+  display: block;
+  width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.coverage-chip-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--warning);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.coverage-chip.ready .coverage-chip-bar-fill { background: var(--success); }
+.coverage-chip-label strong {
+  color: var(--text);
+  font-weight: 600;
+  font-feature-settings: 'tnum';
+  margin-left: 4px;
+}
+.coverage-chip-pill {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
