@@ -158,7 +158,7 @@ export default function DashboardProposalPage() {
                 location="Top of dashboard · stacked bar"
                 title="Portfolio market position"
                 body="How your in-scope leases compare to current market rent, split into Below (>5% under), At (±5%), and Above (>5% over)."
-                calc="Gap = (current − market rent) ÷ market rent."
+                calc="Gap = current rent − market rent. Bands use that gap as a % of market rent (±5%)."
               />
             </div>
           </div>
