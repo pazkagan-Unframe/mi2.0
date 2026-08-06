@@ -1,0 +1,447 @@
+/* Dashboard proposal — self-contained handoff prototype.
+   Reproduces the production "Market dashboard" view and layers in the
+   proposed changes: header info tooltips + a diverging opportunity/at-risk
+   bar that makes the (opportunity − at-risk = net) relationship visible.
+   Uses the global design tokens (--bg, --surface, --success, --danger …). */
+
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---- Top bar ---- */
+.topbar {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+}
+.topTitle {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.selectClients {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+}
+.topDivider {
+  width: 1px;
+  height: 26px;
+  background: var(--border);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--accent-bg);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+}
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  border-radius: 8px;
+}
+.iconBtn:hover { background: var(--surface-2); color: var(--text-2); }
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Layout ---- */
+.body {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 20px 28px 64px;
+}
+
+/* ---- Filter chips ---- */
+.filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 13.5px;
+  color: var(--text);
+}
+.filterChip .muted { color: var(--text-3); }
+.chevron { color: var(--text-3); }
+
+/* ---- Card ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cardTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.windowSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* ---- InfoTip ---- */
+.tipWrap {
+  position: relative;
+  display: inline-flex;
+}
+.tipGlyph {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.4px solid var(--text-3);
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  cursor: help;
+  transition: border-color 0.12s, color 0.12s;
+}
+.tipWrap:hover .tipGlyph,
+.tipWrap:focus-within .tipGlyph {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tipPopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: 300px;
+  background: var(--text);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 12px 30px rgba(20, 19, 15, 0.28);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-3px);
+  transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s;
+  pointer-events: none;
+}
+.tipWrap:hover .tipPopover,
+.tipWrap:focus-within .tipPopover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.tipLocation {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 5px;
+}
+.tipTitle {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.tipBody {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+}
+.tipCalc {
+  display: block;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---- Portfolio market position bar ---- */
+.posBar {
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.posSeg { height: 100%; }
+.segBelow { background: var(--danger); }
+.segAt { background: var(--info); }
+.segAbove { background: var(--success); }
+.legend {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.legendItem strong { color: var(--text); font-weight: 600; margin-left: 2px; }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.dotBelow { background: var(--danger); }
+.dotAt { background: var(--info); }
+.dotAbove { background: var(--success); }
+
+/* ---- Diverging opportunity/at-risk bar (the proposed change) ---- */
+.diverge {
+  margin-top: 4px;
+}
+.divergeLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.divergeTrack {
+  position: relative;
+  height: 46px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-top: 30px; /* room for the net flag that sits above the track */
+}
+.divergeCenter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--border-strong);
+  z-index: 2;
+}
+.barRisk {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: 50%;
+  background: var(--danger);
+  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.barOpp {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  background: var(--success);
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.netMarker {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--text);
+  z-index: 4;
+}
+.netFlag {
+  position: absolute;
+  top: -26px;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+/* ---- Equation row under the bar ---- */
+.equation {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 26px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.eqCell {
+  flex: 1;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.eqCell + .eqCell { border-left: 1px solid var(--border); }
+.eqLabelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.eqValue {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: var(--font-mono);
+}
+.eqValue.pos { color: var(--success); }
+.eqValue.neg { color: var(--danger); }
+.eqValue.net { color: var(--text); }
+.eqMeta { font-size: 11.5px; color: var(--text-3); }
+.eqOp {
+  align-self: center;
+  padding: 0 4px;
+  font-size: 22px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+.netCell { background: var(--surface-2); }
+
+/* ---- Map section ---- */
+.mapToggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mapToggleOpt {
+  padding: 7px 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  background: var(--surface);
+}
+.mapToggleOpt.on { background: var(--surface-2); color: var(--text); font-weight: 500; }
+.mapArea {
+  position: relative;
+  height: 260px;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 30% 40%, var(--info-bg), transparent 45%),
+    radial-gradient(circle at 70% 60%, var(--success-bg), transparent 45%),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mapNote {
+  max-width: 420px;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.mapNote strong { color: var(--text); }
+
+/* ---- Proposal annotation ---- */
+.annotation {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--accent-bg);
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.annotationTag {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--surface);
+  padding: 3px 7px;
+  border-radius: 5px;
+  margin-top: 1px;
+}
